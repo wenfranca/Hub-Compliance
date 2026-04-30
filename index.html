@@ -1,0 +1,2122 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hub Compliance · Auditoria de Fornecedores</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+:root{
+  --void:  #05070f;
+  --base:  #0b0e1c;
+  --panel: #10152a;
+  --panel2:#151c34;
+  --rim:   #1e2845;
+  --rim2:  #2a375e;
+  --ice:   #e8f0ff;
+  --mist:  #8899cc;
+  --fog:   #4a5880;
+  --neon:  #3d7fff;
+  --neon2: #00c9ff;
+  --hot:   #ff4b6e;
+  --warm:  #ffb347;
+  --mint:  #00e59b;
+  --purple:#b47dff;
+  --font-display:'Bebas Neue', sans-serif;
+  --font-ui:'Outfit', sans-serif;
+}
+
+html{scroll-behavior:smooth}
+body{
+  background:var(--void);
+  color:var(--ice);
+  font-family:var(--font-ui);
+  font-size:14px;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+body::before{
+  content:'';
+  position:fixed; inset:0; z-index:0; pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  opacity:.35;
+}
+
+.mono{font-family:'Outfit',monospace;font-variant-numeric:tabular-nums;letter-spacing:.3px}
+
+/* ═══════════════════════════════════════════════════════════════
+   LOGIN OVERLAY
+   ═══════════════════════════════════════════════════════════════ */
+.login-overlay{
+  position:fixed; inset:0; z-index:9999;
+  background:var(--void);
+  display:flex; align-items:center; justify-content:center;
+  padding:24px;
+}
+.login-overlay.hidden{display:none}
+.login-box{
+  background:var(--panel); border:1px solid var(--rim2);
+  border-radius:16px; padding:48px 40px;
+  width:100%; max-width:400px; text-align:center;
+  box-shadow:0 32px 80px rgba(0,0,0,.8);
+  position:relative; z-index:1;
+}
+.login-brand{
+  font-family:var(--font-display);
+  font-size:48px; letter-spacing:3px;
+  background:linear-gradient(90deg, var(--neon), var(--neon2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  margin-bottom:6px; line-height:1;
+}
+.login-sub{
+  font-size:11px; color:var(--fog);
+  letter-spacing:.08em; text-transform:uppercase;
+  margin-bottom:36px; font-weight:500;
+}
+.login-field{position:relative; margin-bottom:16px}
+.login-field input{
+  width:100%; background:var(--panel2); border:1px solid var(--rim);
+  border-radius:8px; padding:12px 16px;
+  color:var(--ice); font-family:var(--font-ui);
+  font-size:14px; outline:none;
+  transition:border-color .2s; text-align:left;
+}
+.login-field input:focus{border-color:var(--neon)}
+.login-field input::placeholder{color:var(--fog)}
+.login-btn{
+  width:100%; margin-top:8px;
+  background:linear-gradient(135deg, var(--neon), var(--neon2));
+  color:#fff; border:none; border-radius:8px;
+  padding:13px; font-family:var(--font-ui);
+  font-size:14px; font-weight:600;
+  cursor:pointer; letter-spacing:.5px;
+  transition:all .2s;
+}
+.login-btn:hover{transform:translateY(-1px); box-shadow:0 4px 20px rgba(61,127,255,.4)}
+.login-err{color:var(--hot); font-size:12px; margin-top:12px; min-height:18px; letter-spacing:.2px}
+.login-footer{font-size:10px; color:var(--fog); margin-top:24px; letter-spacing:.06em}
+
+/* ═══════════════════════════════════════════════════════════════
+   TOPBAR
+   ═══════════════════════════════════════════════════════════════ */
+.topbar{
+  position:sticky; top:0; z-index:100;
+  background:rgba(5,7,15,.88);
+  backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--rim);
+  padding:0 32px;
+  display:flex; align-items:center; justify-content:space-between;
+  height:64px;
+}
+.topbar-left{display:flex; align-items:center; gap:16px}
+.brand{
+  font-family:var(--font-display);
+  font-size:28px; letter-spacing:2px;
+  background:linear-gradient(90deg, var(--neon), var(--neon2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  line-height:1;
+}
+.brand-sep{width:1px; height:28px; background:var(--rim2)}
+.brand-sub{
+  font-size:11px; color:var(--fog); font-weight:500;
+  text-transform:uppercase; letter-spacing:1px;
+}
+.topbar-right{display:flex; align-items:center; gap:12px}
+.status-dot{
+  width:7px; height:7px; border-radius:50%;
+  background:var(--mint); box-shadow:0 0 8px var(--mint);
+  animation:pulse-dot 2s infinite;
+}
+.status-dot.off{background:var(--fog); box-shadow:none; animation:none}
+.status-dot.busy{background:var(--warm); box-shadow:0 0 8px var(--warm)}
+@keyframes pulse-dot{0%,100%{opacity:1} 50%{opacity:.4}}
+.status-label{font-size:11px; color:var(--fog); letter-spacing:.3px}
+
+.upload-btn{
+  display:flex; align-items:center; gap:7px;
+  background:linear-gradient(135deg, var(--neon), var(--neon2));
+  color:#fff; border:none; padding:8px 18px; border-radius:8px;
+  font-family:var(--font-ui); font-size:11px; font-weight:600;
+  cursor:pointer; letter-spacing:.5px; transition:all .2s;
+  text-transform:uppercase;
+}
+.upload-btn:hover:not(:disabled){transform:translateY(-1px); box-shadow:0 4px 20px rgba(61,127,255,.4)}
+.upload-btn:disabled{opacity:.5; cursor:not-allowed}
+.upload-btn.ghost{background:transparent; border:1px solid var(--rim2); color:var(--fog)}
+.upload-btn.ghost:hover{border-color:var(--neon); color:var(--neon); box-shadow:none; transform:none}
+.upload-btn.danger.ghost:hover{border-color:var(--hot); color:var(--hot)}
+
+/* ═══════════════════════════════════════════════════════════════
+   CONTAINER
+   ═══════════════════════════════════════════════════════════════ */
+#dashboard{position:relative; z-index:1}
+.wrap{padding:24px 32px; max-width:1700px; margin:0 auto}
+
+.btn{
+  padding:8px 16px; border-radius:8px;
+  border:1px solid var(--rim2); background:transparent;
+  color:var(--mist); font-size:11px; cursor:pointer;
+  font-family:var(--font-ui); font-weight:600;
+  text-transform:uppercase; letter-spacing:.5px;
+  transition:all .2s;
+}
+.btn:hover{border-color:var(--neon); color:var(--neon)}
+
+/* ═══════════════════════════════════════════════════════════════
+   DROPZONE GRANDE (idêntico ao CashTrail)
+   ═══════════════════════════════════════════════════════════════ */
+.dropzone{
+  border:2px dashed var(--rim2); border-radius:14px;
+  padding:48px 24px; background:transparent;
+  cursor:pointer; transition:all .2s;
+  position:relative; overflow:hidden;
+  text-align:center;
+  margin-bottom:8px;
+  min-height:240px;
+  display:flex; align-items:center; justify-content:center;
+}
+.dropzone::before{
+  content:''; position:absolute; inset:0;
+  background:radial-gradient(circle at 50% 50%, rgba(61,127,255,.06), transparent 60%);
+  opacity:0; transition:opacity .2s;
+}
+.dropzone:hover::before, .dropzone.over::before{opacity:1}
+.dropzone.over, .dropzone:hover{border-color:var(--neon); background:rgba(61,127,255,.03)}
+.dz-icon{font-size:2.2rem; display:block; margin-bottom:10px; opacity:.85}
+.dz-label{font-size:15px; font-weight:500; color:var(--mist); margin-bottom:6px; letter-spacing:.2px}
+.dz-sub{font-size:11px; color:var(--fog); letter-spacing:.2px}
+.upload-cols{display:flex; gap:6px; justify-content:center; flex-wrap:wrap; margin-top:14px; position:relative; z-index:1}
+.upload-cols span{
+  font-size:9px; background:var(--panel2); color:var(--mist);
+  padding:3px 9px; border-radius:4px; letter-spacing:.4px;
+  border:1px solid var(--rim); font-weight:500;
+}
+.dropzone-state{
+  font-size:11px; color:var(--fog);
+  letter-spacing:.4px; margin-bottom:18px;
+  padding-left:4px;
+}
+
+.spinner{
+  width:36px; height:36px;
+  border:3px solid var(--rim2); border-top-color:var(--neon2);
+  border-radius:50%; margin:0 auto 10px; animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ═══════════════════════════════════════════════════════════════
+   MODAIS
+   ═══════════════════════════════════════════════════════════════ */
+.modal-overlay{
+  position:fixed; inset:0; z-index:1000;
+  background:rgba(5,7,15,.85); backdrop-filter:blur(8px);
+  display:none; align-items:center; justify-content:center;
+  padding:20px;
+}
+.modal-overlay.open{display:flex}
+.modal{
+  background:var(--panel); border:1px solid var(--rim2);
+  border-radius:16px; width:100%;
+  max-height:90vh; overflow-y:auto; padding:24px;
+  box-shadow:0 32px 80px rgba(0,0,0,.8);
+}
+.modal-md{max-width:600px}
+.modal-lg{max-width:760px}
+.modal-header{
+  display:flex; justify-content:space-between;
+  align-items:flex-start; margin-bottom:16px; gap:14px;
+  padding-bottom:14px; border-bottom:1px solid var(--rim);
+}
+.modal-title{
+  font-family:var(--font-display);
+  font-size:22px; letter-spacing:1.3px;
+  color:var(--neon2); line-height:1.1;
+}
+.modal-sub{
+  font-size:11px; color:var(--fog);
+  margin-top:6px; letter-spacing:.4px; text-transform:uppercase;
+}
+.modal-close{
+  background:transparent; border:1px solid var(--rim2);
+  color:var(--mist); width:34px; height:34px;
+  border-radius:8px; cursor:pointer; font-size:16px;
+  display:flex; align-items:center; justify-content:center;
+  transition:all .15s; flex-shrink:0;
+}
+.modal-close:hover{border-color:var(--hot); color:var(--hot)}
+
+.modal textarea{
+  width:100%; min-height:200px;
+  background:var(--panel2); border:1px solid var(--rim);
+  border-radius:8px; padding:14px 16px;
+  color:var(--ice); font-family:'Outfit', monospace;
+  font-size:13px; outline:none; resize:vertical;
+  letter-spacing:.3px; line-height:1.6;
+  font-variant-numeric:tabular-nums;
+}
+.modal textarea:focus{border-color:var(--neon)}
+.modal textarea::placeholder{color:var(--fog)}
+
+.modal-footer{
+  display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+  margin-top:16px; padding-top:14px; border-top:1px solid var(--rim);
+}
+.modal-info{display:flex; align-items:center; gap:8px}
+.cnpj-count{
+  font-family:var(--font-display);
+  font-size:20px; color:var(--neon2);
+  letter-spacing:1.5px; line-height:1;
+}
+.upload-error{
+  margin-bottom:14px; background:rgba(255,75,110,.1);
+  border:1px solid rgba(255,75,110,.4); border-radius:8px;
+  padding:10px 14px; color:var(--hot); font-size:13px; display:none;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   FILTROS DA PLANILHA (dentro do modal)
+   ═══════════════════════════════════════════════════════════════ */
+.filter-grid{
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:18px; margin-bottom:6px;
+}
+@media (max-width:640px){
+  .filter-grid{grid-template-columns:1fr}
+}
+.filter-section{margin-bottom:0}
+.filter-section-title{
+  display:flex; justify-content:space-between; align-items:center;
+  font-size:10px; color:var(--fog);
+  text-transform:uppercase; letter-spacing:.7px; font-weight:700;
+  margin-bottom:8px;
+}
+.filter-count-pill{
+  display:inline-block; margin-left:6px;
+  background:var(--panel2); border:1px solid var(--rim);
+  color:var(--neon2); font-family:'Outfit',monospace;
+  font-size:9px; font-weight:700;
+  padding:1px 7px; border-radius:4px;
+  letter-spacing:.5px; min-width:20px; text-align:center;
+}
+.filter-actions{display:flex; gap:6px}
+.filter-mini{
+  background:transparent; border:1px solid var(--rim2);
+  color:var(--mist); font-size:9px; font-weight:600;
+  padding:3px 9px; border-radius:5px;
+  cursor:pointer; font-family:var(--font-ui);
+  text-transform:uppercase; letter-spacing:.5px;
+  transition:all .15s;
+}
+.filter-mini:hover{border-color:var(--neon); color:var(--neon)}
+
+.select-list{
+  background:var(--panel2); border:1px solid var(--rim);
+  border-radius:8px; max-height:240px; overflow-y:auto;
+  padding:4px;
+}
+.select-list::-webkit-scrollbar{width:6px}
+.select-list::-webkit-scrollbar-track{background:transparent}
+.select-list::-webkit-scrollbar-thumb{background:var(--rim2); border-radius:3px}
+
+.select-item{
+  display:flex; align-items:center; gap:10px;
+  padding:8px 10px; border-radius:5px;
+  cursor:pointer; transition:background .12s;
+  font-size:12px; color:var(--mist);
+  user-select:none;
+  font-variant-numeric:tabular-nums;
+}
+.select-item:hover{background:rgba(61,127,255,.06)}
+.select-item.checked{
+  background:rgba(0,201,255,.08);
+  color:var(--ice);
+}
+
+/* Checkbox visual */
+.select-item .cbx{
+  width:16px; height:16px;
+  border:1.5px solid var(--rim2);
+  border-radius:4px;
+  background:var(--panel);
+  display:inline-flex; align-items:center; justify-content:center;
+  flex-shrink:0; transition:all .15s;
+}
+.select-item.checked .cbx{
+  background:var(--neon2);
+  border-color:var(--neon2);
+}
+.select-item.checked .cbx::after{
+  content:''; display:block;
+  width:8px; height:5px;
+  border-left:2px solid var(--void);
+  border-bottom:2px solid var(--void);
+  transform:rotate(-45deg) translate(1px,-1px);
+}
+
+.select-item-label{
+  flex:1; font-weight:500;
+  letter-spacing:.3px;
+}
+
+.filter-summary-value{
+  font-family:var(--font-display);
+  font-size:22px; color:var(--neon2);
+  letter-spacing:1.5px; line-height:1;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PROGRESS BAR
+   ═══════════════════════════════════════════════════════════════ */
+.progress-wrap{
+  display:none; background:var(--panel); border:1px solid var(--rim);
+  border-radius:14px; padding:16px 20px; margin-bottom:20px;
+}
+.progress-wrap.active{display:block}
+.progress-head{
+  display:flex; justify-content:space-between; align-items:center;
+  margin-bottom:10px; font-size:11px; color:var(--fog);
+  text-transform:uppercase; letter-spacing:.6px; font-weight:600;
+}
+.progress-head .progress-num{
+  font-family:var(--font-display); font-size:16px;
+  color:var(--neon2); letter-spacing:1.5px;
+}
+.progress-bar{
+  height:6px; background:var(--panel2);
+  border-radius:3px; overflow:hidden;
+  border:1px solid var(--rim);
+}
+.progress-fill{
+  height:100%; width:0%;
+  background:linear-gradient(90deg, var(--neon), var(--neon2));
+  transition:width .3s ease; border-radius:3px;
+}
+.progress-now{
+  margin-top:8px; font-size:11px; color:var(--mist);
+  letter-spacing:.2px; min-height:16px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   KPIs
+   ═══════════════════════════════════════════════════════════════ */
+.kpis{
+  display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
+  gap:14px; margin-bottom:24px;
+}
+.kpi{
+  background:var(--panel); border:1px solid var(--rim);
+  border-radius:12px; padding:16px 18px;
+  position:relative; overflow:hidden;
+  transition:transform .2s, border-color .2s;
+}
+.kpi:hover{transform:translateY(-3px); border-color:var(--rim2)}
+.kpi::after{
+  content:''; position:absolute; top:-22px; right:-22px;
+  width:70px; height:70px; border-radius:50%;
+  background:radial-gradient(circle, rgba(61,127,255,.18), transparent 70%);
+  filter:blur(14px);
+}
+.kpi:nth-child(2)::after{background:radial-gradient(circle, rgba(0,229,155,.18), transparent 70%)}
+.kpi:nth-child(3)::after{background:radial-gradient(circle, rgba(255,179,71,.18), transparent 70%)}
+.kpi:nth-child(4)::after{background:radial-gradient(circle, rgba(251,146,60,.22), transparent 70%)}
+.kpi:nth-child(5)::after{background:radial-gradient(circle, rgba(255,75,110,.18), transparent 70%)}
+
+.kpi-label{
+  font-size:10px; color:var(--fog);
+  letter-spacing:.6px; text-transform:uppercase;
+  margin-bottom:6px; font-weight:600;
+  position:relative; z-index:1;
+}
+.kpi-value{
+  font-family:var(--font-display);
+  font-size:30px; line-height:1; letter-spacing:1px;
+  background:linear-gradient(135deg, var(--ice), var(--mist));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  position:relative; z-index:1;
+}
+.kpi:nth-child(1) .kpi-value{background:linear-gradient(135deg, var(--neon), var(--neon2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent}
+.kpi:nth-child(2) .kpi-value{background:linear-gradient(135deg, var(--mint), #00b8a9); -webkit-background-clip:text; -webkit-text-fill-color:transparent}
+.kpi:nth-child(3) .kpi-value{background:linear-gradient(135deg, var(--warm), #ffe066); -webkit-background-clip:text; -webkit-text-fill-color:transparent}
+.kpi:nth-child(4) .kpi-value{background:linear-gradient(135deg, #fb923c, var(--warm)); -webkit-background-clip:text; -webkit-text-fill-color:transparent}
+.kpi:nth-child(5) .kpi-value{background:linear-gradient(135deg, var(--hot), #ff8090); -webkit-background-clip:text; -webkit-text-fill-color:transparent}
+
+/* Quando os KPIs estão "zerados" (mostrando traço), usa cor neutra para não destacar */
+.kpis.empty .kpi-value{
+  background:none !important;
+  -webkit-text-fill-color:var(--fog) !important;
+  color:var(--fog) !important;
+  opacity:.6;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CARD / RESULTADOS
+   ═══════════════════════════════════════════════════════════════ */
+.card{
+  background:var(--panel); border:1px solid var(--rim);
+  border-radius:14px; padding:20px 22px;
+  margin-bottom:16px;
+  transition:border-color .2s;
+}
+.card:hover{border-color:var(--rim2)}
+.card-title{
+  font-size:11px; font-weight:700; color:var(--fog);
+  margin-bottom:16px; text-transform:uppercase;
+  letter-spacing:.8px; font-family:var(--font-ui);
+  display:flex; justify-content:space-between; align-items:center; gap:10px;
+}
+.card-title .actions{display:flex; gap:8px}
+
+/* Cards de resultado individual (cada fornecedor) */
+.forn-card{
+  background:var(--panel); border:1px solid var(--rim);
+  border-radius:12px; padding:18px 20px;
+  margin-bottom:14px; position:relative; overflow:hidden;
+  transition:border-color .2s;
+}
+.forn-card:hover{border-color:var(--rim2)}
+.forn-card.error{border-left:3px solid var(--hot)}
+.forn-card.inactive{border-left:3px solid var(--warm)}
+.forn-card.ok{border-left:3px solid var(--mint)}
+
+.forn-head{
+  display:flex; justify-content:space-between; align-items:flex-start;
+  gap:14px; flex-wrap:wrap; margin-bottom:14px;
+  padding-bottom:12px; border-bottom:1px solid var(--rim);
+}
+.forn-name{
+  font-family:var(--font-display);
+  font-size:22px; letter-spacing:1.2px; line-height:1.1;
+  color:var(--ice); margin-bottom:4px;
+}
+.forn-fant{
+  font-size:11px; color:var(--neon2);
+  letter-spacing:.4px; text-transform:uppercase; font-weight:600;
+  margin-bottom:4px;
+}
+.forn-cnpj{
+  font-family:'Outfit',monospace; font-size:12px;
+  color:var(--mist); letter-spacing:.5px;
+  font-variant-numeric:tabular-nums;
+}
+
+.forn-grid{
+  display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+  gap:14px 22px;
+}
+.forn-field{display:flex; flex-direction:column; gap:3px}
+.forn-field-label{
+  font-size:9px; color:var(--fog);
+  text-transform:uppercase; letter-spacing:.7px; font-weight:700;
+}
+.forn-field-value{
+  font-size:13px; color:var(--ice); letter-spacing:.2px;
+  word-break:break-word;
+}
+.forn-field-value.muted{color:var(--fog); font-style:italic}
+.forn-field-value .muted{color:var(--fog); font-style:italic; font-size:12px}
+.forn-field-value a{color:var(--neon2); text-decoration:none}
+.forn-field-value a:hover{text-decoration:underline}
+
+.qsa-list{display:flex; flex-direction:column; gap:4px; margin-top:2px}
+.qsa-item{
+  font-size:12px; color:var(--mist); letter-spacing:.2px;
+  padding:3px 8px; background:var(--panel2);
+  border:1px solid var(--rim); border-radius:5px;
+  display:inline-block; width:fit-content;
+}
+
+/* Badges */
+.badge{
+  font-size:9px; font-weight:700;
+  padding:4px 9px; border-radius:5px;
+  font-family:var(--font-ui);
+  white-space:nowrap; letter-spacing:.5px;
+  text-transform:uppercase;
+  border:1px solid;
+}
+.badge-green{background:rgba(0,229,155,.12); color:var(--mint); border-color:rgba(0,229,155,.3)}
+.badge-red{background:rgba(255,75,110,.12); color:var(--hot); border-color:rgba(255,75,110,.3)}
+.badge-yellow{background:rgba(255,179,71,.12); color:var(--warm); border-color:rgba(255,179,71,.3)}
+.badge-orange{background:rgba(251,146,60,.14); color:#fb923c; border-color:rgba(251,146,60,.35)}
+.badge-purple{background:rgba(180,125,255,.12); color:var(--purple); border-color:rgba(180,125,255,.3)}
+.badge-blue{background:rgba(61,127,255,.12); color:var(--neon); border-color:rgba(61,127,255,.3)}
+
+/* Alertas de tempo de abertura: realce na borda lateral do card */
+.forn-card.abertura-critico{
+  border-left:3px solid var(--hot) !important;
+  box-shadow:inset 4px 0 0 -3px rgba(255,75,110,.15);
+}
+.forn-card.abertura-alto{
+  border-left:3px solid #fb923c !important;
+}
+.forn-card.abertura-medio{
+  border-left:3px solid var(--warm) !important;
+}
+.forn-card.abertura-baixo{
+  border-left:3px solid var(--purple) !important;
+}
+
+/* Texto "Aberto há X meses" abaixo da data */
+.abertura-humano{
+  display:inline-block; margin-top:4px;
+  font-size:11px; font-weight:600;
+  color:var(--mist); letter-spacing:.3px;
+  font-style:italic;
+}
+.abertura-critico .abertura-humano{color:var(--hot)}
+.abertura-alto .abertura-humano{color:#fb923c}
+.abertura-medio .abertura-humano{color:var(--warm)}
+.abertura-baixo .abertura-humano{color:var(--purple)}
+
+.error-msg{
+  font-size:13px; color:var(--hot); letter-spacing:.2px;
+}
+
+/* Empty state */
+.empty-state{
+  text-align:center; padding:50px 20px;
+  color:var(--fog); font-size:13px; letter-spacing:.2px;
+}
+.empty-icon{font-size:2.4rem; display:block; margin-bottom:12px; opacity:.5}
+
+/* ═══════════════════════════════════════════════════════════════
+   BARRA DE BUSCA NOS RESULTADOS
+   ═══════════════════════════════════════════════════════════════ */
+.search-bar{
+  display:flex; align-items:center; gap:10px;
+  background:var(--panel2); border:1px solid var(--rim);
+  border-radius:10px; padding:10px 14px;
+  margin-bottom:14px;
+  transition:border-color .15s;
+}
+.search-bar:focus-within{border-color:var(--neon)}
+.search-icon{
+  font-size:14px; opacity:.6;
+}
+.search-bar input{
+  flex:1; background:transparent; border:none; outline:none;
+  color:var(--ice); font-family:var(--font-ui);
+  font-size:13px; letter-spacing:.2px; padding:2px 0;
+}
+.search-bar input::placeholder{color:var(--fog)}
+.search-clear{
+  background:transparent; border:1px solid var(--rim2);
+  color:var(--mist); width:24px; height:24px;
+  border-radius:6px; cursor:pointer; font-size:11px;
+  display:flex; align-items:center; justify-content:center;
+  transition:all .15s; padding:0;
+}
+.search-clear:hover{border-color:var(--hot); color:var(--hot)}
+.search-count{
+  font-size:10px; color:var(--neon2);
+  letter-spacing:.5px; text-transform:uppercase; font-weight:700;
+  white-space:nowrap;
+}
+
+/* Card escondido pelo filtro de busca (não some, só fica oculto - pra ser ignorado na impressão também) */
+.forn-card.hidden-by-search{display:none !important}
+
+.search-empty{
+  text-align:center; padding:36px 20px;
+  color:var(--fog); font-size:13px;
+  background:var(--panel2); border:1px dashed var(--rim2);
+  border-radius:10px; letter-spacing:.2px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   FILTROS DE ALERTA (chips)
+   ═══════════════════════════════════════════════════════════════ */
+.alert-filters{
+  display:flex; gap:6px; flex-wrap:wrap; align-items:center;
+  margin-bottom:14px;
+  padding:10px 14px;
+  background:var(--panel2); border:1px solid var(--rim);
+  border-radius:10px;
+}
+.alert-filters-label{
+  font-size:10px; color:var(--fog);
+  text-transform:uppercase; letter-spacing:.7px; font-weight:700;
+  margin-right:4px;
+}
+.alert-chip{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:5px 11px; border-radius:6px;
+  border:1px solid var(--rim2); background:transparent;
+  color:var(--mist); font-size:10px; font-weight:600;
+  cursor:pointer; font-family:var(--font-ui);
+  letter-spacing:.4px; transition:all .15s;
+  white-space:nowrap;
+}
+.alert-chip:hover:not(.active){border-color:var(--neon); color:var(--ice)}
+.alert-chip.active{
+  background:rgba(0,201,255,.12);
+  border-color:var(--neon2);
+  color:var(--neon2);
+  box-shadow:0 0 0 1px rgba(0,201,255,.2);
+}
+.alert-chip-count{
+  font-family:'Outfit', monospace;
+  font-variant-numeric:tabular-nums;
+  background:var(--panel); border:1px solid var(--rim);
+  padding:1px 6px; border-radius:4px;
+  font-size:9px; color:var(--ice); font-weight:700;
+  min-width:22px; text-align:center;
+}
+.alert-chip.active .alert-chip-count{
+  background:rgba(0,201,255,.2); border-color:rgba(0,201,255,.4);
+  color:var(--neon2);
+}
+/* Cores específicas dos chips quando ativos */
+.alert-chip.alert-critico.active{background:rgba(255,75,110,.15); border-color:var(--hot); color:var(--hot); box-shadow:0 0 0 1px rgba(255,75,110,.25)}
+.alert-chip.alert-critico.active .alert-chip-count{background:rgba(255,75,110,.2); border-color:rgba(255,75,110,.4); color:var(--hot)}
+.alert-chip.alert-alto.active{background:rgba(251,146,60,.15); border-color:#fb923c; color:#fb923c; box-shadow:0 0 0 1px rgba(251,146,60,.25)}
+.alert-chip.alert-alto.active .alert-chip-count{background:rgba(251,146,60,.2); border-color:rgba(251,146,60,.4); color:#fb923c}
+.alert-chip.alert-medio.active{background:rgba(255,179,71,.15); border-color:var(--warm); color:var(--warm); box-shadow:0 0 0 1px rgba(255,179,71,.25)}
+.alert-chip.alert-medio.active .alert-chip-count{background:rgba(255,179,71,.2); border-color:rgba(255,179,71,.4); color:var(--warm)}
+.alert-chip.alert-baixo.active{background:rgba(180,125,255,.15); border-color:var(--purple); color:var(--purple); box-shadow:0 0 0 1px rgba(180,125,255,.25)}
+.alert-chip.alert-baixo.active .alert-chip-count{background:rgba(180,125,255,.2); border-color:rgba(180,125,255,.4); color:var(--purple)}
+.alert-chip.alert-sem.active{background:rgba(0,229,155,.12); border-color:var(--mint); color:var(--mint); box-shadow:0 0 0 1px rgba(0,229,155,.25)}
+.alert-chip.alert-sem.active .alert-chip-count{background:rgba(0,229,155,.2); border-color:rgba(0,229,155,.4); color:var(--mint)}
+.alert-chip.alert-erro.active{background:rgba(255,75,110,.12); border-color:var(--hot); color:var(--hot); box-shadow:0 0 0 1px rgba(255,75,110,.25)}
+.alert-chip.alert-erro.active .alert-chip-count{background:rgba(255,75,110,.2); border-color:rgba(255,75,110,.4); color:var(--hot)}
+
+/* Botões mini (retry) */
+.btn-mini{
+  display:inline-flex; align-items:center; gap:5px;
+  padding:5px 11px; border-radius:6px;
+  border:1px solid var(--rim2); background:transparent;
+  color:var(--mist); font-size:10px; font-weight:600;
+  cursor:pointer; font-family:var(--font-ui);
+  text-transform:uppercase; letter-spacing:.5px;
+  transition:all .15s;
+}
+.btn-mini:hover:not(:disabled){border-color:var(--neon); color:var(--neon)}
+.btn-mini:disabled{opacity:.5; cursor:not-allowed}
+.btn-mini.retry{
+  border-color:var(--warm); color:var(--warm);
+  background:rgba(255,179,71,.06);
+}
+.btn-mini.retry:hover:not(:disabled){
+  background:rgba(255,179,71,.14); border-color:var(--warm); color:var(--warm);
+}
+.btn-mini.retry .alert-chip-count, .btn-mini.retry #retryCount{
+  font-family:'Outfit',monospace; font-weight:700;
+}
+
+/* Footer */
+.footer{
+  margin-top:28px; padding:14px 0;
+  border-top:1px solid var(--rim);
+  display:flex; justify-content:space-between;
+  flex-wrap:wrap; gap:8px;
+  font-size:10px; color:var(--fog);
+  letter-spacing:.5px; text-transform:uppercase;
+}
+
+/* Scrollbar global */
+::-webkit-scrollbar{width:10px; height:10px}
+::-webkit-scrollbar-track{background:var(--base)}
+::-webkit-scrollbar-thumb{background:var(--rim2); border-radius:5px}
+::-webkit-scrollbar-thumb:hover{background:var(--fog)}
+
+/* Responsivo */
+@media (max-width: 720px){
+  .topbar{padding:0 16px; height:auto; flex-wrap:wrap; gap:10px; padding-top:12px; padding-bottom:12px}
+  .wrap{padding:18px 14px}
+  .kpi-value{font-size:24px}
+  .forn-name{font-size:18px}
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   IMPRESSÃO / PDF
+   ═══════════════════════════════════════════════════════════════ */
+@media print{
+  @page{size:A4; margin:12mm 12mm 14mm 12mm}
+  html, body{
+    background:#fff !important; color:#000 !important;
+    font-size:9.5pt;
+  }
+  body::before{display:none !important}
+  .no-print, .login-overlay, .progress-wrap, .upload-error,
+  .modal-overlay, .footer,
+  .dropzone, #dropzoneState{display:none !important}
+
+  /* Esconde a topbar original interativa (vamos imprimir um cabeçalho próprio) */
+  .topbar{display:none !important}
+
+  #dashboard{padding:0}
+  .wrap{padding:0; max-width:100%}
+
+  /* Cabeçalho do relatório (gerado dinamicamente em #printHeader) */
+  .print-only{display:block !important}
+  #printHeader{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    padding:0 0 8px 0; margin-bottom:12px;
+    border-bottom:1.5px solid #0a3a8c;
+  }
+  .print-brand{
+    font-family:'Bebas Neue', sans-serif;
+    font-size:24pt; line-height:1; color:#0a3a8c !important;
+    letter-spacing:1.4px;
+  }
+  .print-brand-sub{
+    font-size:9pt; color:#444 !important; font-weight:600;
+    letter-spacing:.8px; text-transform:uppercase;
+    margin-top:2px;
+  }
+  .print-meta{
+    text-align:right; font-size:8pt; color:#555 !important;
+    line-height:1.5; letter-spacing:.3px;
+  }
+  .print-meta .print-meta-title{
+    font-family:'Bebas Neue', sans-serif;
+    font-size:14pt; color:#000 !important; letter-spacing:.8px;
+    line-height:1; margin-bottom:4px;
+  }
+
+  /* KPIs compactos em uma linha */
+  .kpis{
+    display:grid; grid-template-columns:repeat(5, 1fr); gap:6px;
+    margin:0 0 12px 0;
+  }
+  .kpi{
+    background:#f4f6fa !important; border:1px solid #cbd2dd !important;
+    padding:7px 9px; border-radius:5px;
+    page-break-inside:avoid;
+  }
+  .kpi::after{display:none}
+  .kpi-label{
+    color:#555 !important; font-size:6.5pt;
+    line-height:1.2; margin-bottom:2px;
+  }
+  .kpi-value{
+    font-family:'Bebas Neue', sans-serif;
+    font-size:18pt; color:#0a3a8c !important;
+    -webkit-text-fill-color:#0a3a8c !important; background:none !important;
+    letter-spacing:.5px;
+  }
+
+  /* Card "Resultados da consulta" - sem moldura, só os cartões internos */
+  .card{
+    background:transparent !important; border:none !important;
+    box-shadow:none !important; padding:0; margin-bottom:0;
+  }
+  .card > .card-title{display:none !important}
+
+  /* Grade de 2 cartões por linha em A4 retrato */
+  #resList{
+    display:grid; grid-template-columns:1fr 1fr; gap:8px;
+  }
+
+  .forn-card{
+    background:#fff !important; border:1px solid #aaa !important;
+    border-radius:5px; padding:8px 10px; margin:0;
+    page-break-inside:avoid; break-inside:avoid;
+    display:flex; flex-direction:column;
+  }
+  .forn-card.error{border-left:3px solid #c0392b !important}
+  .forn-card.inactive{border-left:3px solid #d68910 !important}
+  .forn-card.ok{border-left:3px solid #1e8449 !important}
+  .forn-card.abertura-critico{border-left:3px solid #c0392b !important}
+  .forn-card.abertura-alto{border-left:3px solid #d97706 !important}
+  .forn-card.abertura-medio{border-left:3px solid #d68910 !important}
+  .forn-card.abertura-baixo{border-left:3px solid #7c3aed !important}
+
+  .forn-head{
+    border-bottom:1px solid #ccc !important;
+    padding-bottom:5px; margin-bottom:6px;
+    flex-wrap:wrap;
+  }
+  .forn-head > div:last-child{align-items:flex-start !important}
+  .forn-name{
+    font-family:'Bebas Neue', sans-serif;
+    font-size:11pt; color:#000 !important;
+    letter-spacing:.4px; line-height:1.1;
+  }
+  .forn-fant{color:#0a3a8c !important; font-size:7.5pt; margin:1px 0}
+  .forn-cnpj{color:#444 !important; font-size:8pt}
+
+  .forn-grid{
+    grid-template-columns:1fr 1fr !important;
+    gap:5px 10px !important;
+  }
+  .forn-field-label{
+    color:#555 !important; font-size:6.5pt;
+    margin-bottom:1px;
+  }
+  .forn-field-value{
+    color:#000 !important; font-size:8.5pt;
+    line-height:1.3;
+  }
+  .forn-field-value a{color:#0a3a8c !important; text-decoration:none}
+
+  .qsa-list{gap:2px !important; margin-top:1px !important}
+  .qsa-item{
+    background:#f4f6fa !important; border:1px solid #cbd2dd !important;
+    color:#000 !important; font-size:7.5pt; padding:1px 5px;
+  }
+
+  .badge{
+    border:1px solid #555 !important;
+    color:#000 !important; background:#fff !important;
+    padding:1px 5px; font-size:6.5pt; letter-spacing:.3px;
+    line-height:1.3;
+  }
+  .badge-green{background:#e8f8f0 !important; color:#0e6a3a !important; border-color:#1e8449 !important}
+  .badge-red{background:#fdebec !important; color:#a02324 !important; border-color:#c0392b !important}
+  .badge-orange{background:#fdeee0 !important; color:#a04300 !important; border-color:#d97706 !important}
+  .badge-yellow{background:#fef5e6 !important; color:#9a6300 !important; border-color:#d68910 !important}
+  .badge-purple{background:#f3eafe !important; color:#5e2ca5 !important; border-color:#7c3aed !important}
+  .badge-blue{background:#e8f0fc !important; color:#0a3a8c !important; border-color:#3d7fff !important}
+
+  .abertura-humano{
+    color:#444 !important; font-size:7pt; font-weight:600;
+    margin-top:1px !important; display:block;
+  }
+  .abertura-critico .abertura-humano{color:#a02324 !important; font-weight:700}
+  .abertura-alto .abertura-humano{color:#a04300 !important; font-weight:700}
+  .abertura-medio .abertura-humano{color:#9a6300 !important; font-weight:600}
+  .abertura-baixo .abertura-humano{color:#5e2ca5 !important; font-weight:600}
+
+  /* Rodapé do relatório */
+  #printFooter{
+    margin-top:10px; padding:5px 0;
+    border-top:1px solid #aaa !important;
+    color:#555 !important; font-size:7.5pt;
+    display:flex; justify-content:space-between; flex-wrap:wrap;
+    letter-spacing:.3px;
+  }
+
+  /* Esconde search-bar e filtros de alerta na impressão */
+  .search-bar, .alert-filters, .search-empty{display:none !important}
+
+  /* Esconde elementos de UI dentro de cartões de erro */
+  .forn-card .btn-mini{display:none !important}
+
+  /* Em viewport muito estreito (carta ou paisagem A5), volta para 1 coluna */
+  @media (max-width: 550pt){
+    #resList{grid-template-columns:1fr}
+  }
+}
+
+.print-only{display:none}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     LOGIN OVERLAY
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="login-overlay" id="login-overlay">
+  <div class="login-box">
+    <div class="login-brand">HUB COMPLIANCE</div>
+    <div class="login-sub">Desenvolvido por Wendell França</div>
+    <div class="login-field">
+      <input type="text" id="login-user" placeholder="Usuário" autocomplete="off">
+    </div>
+    <div class="login-field">
+      <input type="password" id="login-pass" placeholder="Senha" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="login-btn" onclick="doLogin()">Entrar</button>
+    <div class="login-err" id="login-err"></div>
+    <div class="login-footer">Software com acesso restrito</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     APP
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="dashboard">
+
+  <div class="topbar no-print">
+    <div class="topbar-left">
+      <div class="brand">HUB COMPLIANCE</div>
+      <div class="brand-sep"></div>
+      <div class="brand-sub">Desenvolvido por Wendell França</div>
+    </div>
+    <div class="topbar-right">
+      <div class="status-dot off" id="statusDot"></div>
+      <div class="status-label" id="statusLabel">Sem dados</div>
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none">
+      <button class="upload-btn ghost" onclick="abrirColar()">📝 Colar CNPJs</button>
+      <button class="upload-btn" onclick="document.getElementById('fileInput').click()">↑ Importar planilha</button>
+      <button class="upload-btn" id="btnImprimir" onclick="imprimir()" style="display:none">🖨 Imprimir / PDF</button>
+      <button class="upload-btn ghost danger" id="btnLimpar" onclick="limparTudo()" style="display:none">✕ Trocar</button>
+    </div>
+  </div>
+
+  <div class="wrap">
+
+    <!-- Cabeçalho exclusivo da impressão -->
+    <div id="printHeader" class="print-only">
+      <div>
+        <div class="print-brand">HUB COMPLIANCE</div>
+        <div class="print-brand-sub">Desenvolvido por Wendell França</div>
+      </div>
+      <div class="print-meta">
+        <div class="print-meta-title">Relatório de Auditoria de Fornecedores</div>
+        <div id="printDate">—</div>
+        <div id="printScope">—</div>
+      </div>
+    </div>
+
+    <div id="uploadError" class="upload-error"></div>
+
+    <!-- DROPZONE GRANDE no topo (idêntico ao CashTrail) -->
+    <div class="dropzone" id="dropzone">
+      <div id="uploadContent" style="position:relative;z-index:1">
+        <span class="dz-icon">📂</span>
+        <div class="dz-label">Arraste a planilha aqui ou clique para selecionar</div>
+        <div class="dz-sub">.xlsx, .xls ou .csv</div>
+        <div class="upload-cols">
+          <span>CNPJ</span><span>ANO</span><span>MÊS</span>
+        </div>
+      </div>
+      <div id="uploadLoading" style="display:none;position:relative;z-index:1">
+        <div class="spinner"></div>
+        <div style="color:var(--mist);font-size:13px;letter-spacing:.3px">Processando planilha...</div>
+      </div>
+    </div>
+    <div class="dropzone-state" id="dropzoneState">Nenhuma consulta ativa</div>
+
+    <!-- PROGRESS -->
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-head">
+        <span>Consultando BrasilAPI</span>
+        <span class="progress-num" id="progressNum">0 / 0</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-now mono" id="progressNow">Aguardando início…</div>
+    </div>
+
+    <!-- KPIs (visíveis desde o início, com valores em traço) -->
+    <div class="kpis empty" id="kpiRow">
+      <div class="kpi"><div class="kpi-label">Consultados</div><div class="kpi-value" id="kpiTotal">—</div></div>
+      <div class="kpi"><div class="kpi-label">Ativos</div><div class="kpi-value" id="kpiAtivos">—</div></div>
+      <div class="kpi"><div class="kpi-label">Não ativos</div><div class="kpi-value" id="kpiInativos">—</div></div>
+      <div class="kpi"><div class="kpi-label">Recém-abertos (&lt; 1 ano)</div><div class="kpi-value" id="kpiRecentes">—</div></div>
+      <div class="kpi"><div class="kpi-label">Falhas / Não encontrados</div><div class="kpi-value" id="kpiErros">—</div></div>
+    </div>
+
+    <!-- RESULTADOS -->
+    <div id="resultados"></div>
+
+    <!-- Rodapé exclusivo da impressão -->
+    <div id="printFooter" class="print-only">
+      <span>Hub Compliance · Auditoria de Fornecedores · Desenvolvido por Wendell França</span>
+      <span>Fonte: BrasilAPI (dados públicos da Receita Federal)</span>
+    </div>
+
+    <div class="footer no-print">
+      <span>Hub Compliance · Auditoria de Fornecedores · Desenvolvido por Wendell França</span>
+      <span>Fonte: BrasilAPI (dados públicos da Receita Federal)</span>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     MODAL: COLAR CNPJs
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay no-print" id="colarOverlay">
+  <div class="modal modal-md">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">Colar CNPJs</div>
+        <div class="modal-sub">Aceita qualquer formato — separe por vírgula, ponto-e-vírgula, espaço ou nova linha</div>
+      </div>
+      <button class="modal-close" onclick="fecharColar()">✕</button>
+    </div>
+    <textarea id="cnpjInput" placeholder="61.946.368/0001-31&#10;19131243000197&#10;33.000.167/0001-01"></textarea>
+    <div class="modal-footer">
+      <span class="modal-info">
+        <span style="font-size:10px;color:var(--fog);text-transform:uppercase;letter-spacing:.6px;font-weight:700">CNPJs detectados:</span>
+        <span class="cnpj-count mono" id="cnpjCount">0</span>
+      </span>
+      <span style="flex:1"></span>
+      <button class="upload-btn ghost" onclick="fecharColar()">Cancelar</button>
+      <button class="upload-btn" id="btnConsultar" onclick="consultarManual()">▶ Consultar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     MODAL: FILTROS DA PLANILHA
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay no-print" id="filtroOverlay">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">Selecione o período</div>
+        <div class="modal-sub" id="filterSub">—</div>
+      </div>
+      <button class="modal-close" onclick="cancelarFiltro()">✕</button>
+    </div>
+
+    <div class="filter-grid">
+      <div class="filter-section">
+        <div class="filter-section-title">
+          <span>ANO <span class="filter-count-pill" id="anoSelCount">0</span></span>
+          <span class="filter-actions">
+            <button class="filter-mini" onclick="toggleAll('ano',true)">Todos</button>
+            <button class="filter-mini" onclick="toggleAll('ano',false)">Limpar</button>
+          </span>
+        </div>
+        <div class="select-list" id="chipsAno"></div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">
+          <span>MÊS <span class="filter-count-pill" id="mesSelCount">0</span></span>
+          <span class="filter-actions">
+            <button class="filter-mini" onclick="toggleAll('mes',true)">Todos</button>
+            <button class="filter-mini" onclick="toggleAll('mes',false)">Limpar</button>
+          </span>
+        </div>
+        <div class="select-list" id="chipsMes"></div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <span class="modal-info">
+        <span style="font-size:10px;color:var(--fog);text-transform:uppercase;letter-spacing:.6px;font-weight:700">CNPJs únicos no recorte:</span>
+        <span class="filter-summary-value mono" id="filterCount">0</span>
+      </span>
+      <span style="flex:1"></span>
+      <button class="upload-btn ghost" onclick="cancelarFiltro()">Cancelar</button>
+      <button class="upload-btn" id="btnFiltro" onclick="consultarFiltrado()">▶ Consultar selecionados</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═════════════════ LOGIN ═════════════════
+const _u=[
+  {u:'wenfranca', p:'@#7263Wf'},
+  {u:'gisdias',   p:'@#1234Gd'}
+];
+let usuarioLogado='';
+
+function doLogin(){
+  const u=document.getElementById('login-user').value.trim();
+  const p=document.getElementById('login-pass').value;
+  const ok=_u.find(x=>x.u===u&&x.p===p);
+  if(ok){
+    usuarioLogado=u;
+    document.getElementById('login-overlay').classList.add('hidden');
+  }else{
+    const err=document.getElementById('login-err');
+    err.textContent='Usuário ou senha inválidos.';
+    document.getElementById('login-pass').value='';
+    setTimeout(()=>{err.textContent=''},3000);
+  }
+}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  const u=document.getElementById('login-user');
+  if(u){
+    u.focus();
+    u.addEventListener('keydown',e=>{if(e.key==='Enter'){document.getElementById('login-pass').focus()}});
+  }
+});
+
+// ═════════════════ HELPERS ═════════════════
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// Apenas dígitos do CNPJ
+const onlyDigits=s=>String(s||'').replace(/\D/g,'');
+
+// Formata CNPJ: 11222333000181 → 11.222.333/0001-81
+function fmtCNPJ(c){
+  const d=onlyDigits(c);
+  if(d.length!==14)return c;
+  return d.slice(0,2)+'.'+d.slice(2,5)+'.'+d.slice(5,8)+'/'+d.slice(8,12)+'-'+d.slice(12);
+}
+
+// Validação de CNPJ (dígitos verificadores)
+function validaCNPJ(c){
+  const cnpj=onlyDigits(c);
+  if(cnpj.length!==14)return false;
+  if(/^(\d)\1+$/.test(cnpj))return false;
+  const calc=(base)=>{
+    const pesos=base.length===12?[5,4,3,2,9,8,7,6,5,4,3,2]:[6,5,4,3,2,9,8,7,6,5,4,3,2];
+    let soma=0;
+    for(let i=0;i<base.length;i++)soma+=parseInt(base[i],10)*pesos[i];
+    const r=soma%11;
+    return r<2?0:11-r;
+  };
+  const d1=calc(cnpj.slice(0,12));
+  const d2=calc(cnpj.slice(0,12)+d1);
+  return d1===parseInt(cnpj[12],10)&&d2===parseInt(cnpj[13],10);
+}
+
+// Formata data ISO (YYYY-MM-DD) → DD/MM/YYYY
+function fmtData(d){
+  if(!d)return '—';
+  const m=String(d).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m)return `${m[3]}/${m[2]}/${m[1]}`;
+  // Já em DD/MM/YYYY?
+  if(/^\d{2}\/\d{2}\/\d{4}$/.test(d))return d;
+  return d;
+}
+
+// Formata telefone: BrasilAPI retorna ddd_telefone_1 = "(33) 3276-4854" ou "3332764854"
+function fmtTel(t){
+  if(!t)return '';
+  const d=onlyDigits(t);
+  if(d.length===10)return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
+  if(d.length===11)return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
+  return t;
+}
+
+// ═════════════════ ALERTA DE TEMPO DE ABERTURA ═════════════════
+// Recebe data em ISO (YYYY-MM-DD) ou DD/MM/YYYY e devolve metadados de alerta
+function avaliaAbertura(dataStr){
+  if(!dataStr||dataStr==='—')return null;
+  let dia,mes,ano;
+  let m=String(dataStr).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m){ano=+m[1];mes=+m[2];dia=+m[3]}
+  else{
+    m=String(dataStr).match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+    if(m){dia=+m[1];mes=+m[2];ano=+m[3]}
+    else return null;
+  }
+  const dt=new Date(ano,mes-1,dia);
+  if(isNaN(dt.getTime()))return null;
+  const hoje=new Date();
+  hoje.setHours(0,0,0,0);
+  // CNPJ aberto no futuro? (data inconsistente) - ignora alerta
+  if(dt>hoje)return null;
+
+  const ms=hoje-dt;
+  const dias=Math.floor(ms/86400000);
+
+  // Cálculo aproximado em meses e anos
+  const anos=hoje.getFullYear()-dt.getFullYear()
+    -((hoje.getMonth()<dt.getMonth()||(hoje.getMonth()===dt.getMonth()&&hoje.getDate()<dt.getDate()))?1:0);
+  const mesesTotal=
+    (hoje.getFullYear()-dt.getFullYear())*12
+    +(hoje.getMonth()-dt.getMonth())
+    -(hoje.getDate()<dt.getDate()?1:0);
+
+  // Texto humano
+  let humano;
+  if(dias===0)humano='Aberto hoje';
+  else if(dias===1)humano='Aberto ontem';
+  else if(dias<30)humano=`Aberto há ${dias} dia${dias>1?'s':''}`;
+  else if(mesesTotal<12)humano=`Aberto há ${mesesTotal} ${mesesTotal===1?'mês':'meses'}`;
+  else if(anos===1&&mesesTotal===12)humano='Aberto há 1 ano';
+  else if(anos<2)humano=`Aberto há ${mesesTotal} meses`;
+  else humano=`Aberto há ${anos} anos`;
+
+  // Faixas de risco
+  let nivel=null,classe='',icone='',texto='';
+  if(dias<30){
+    nivel='critico';classe='badge-red';icone='🚨';
+    texto=`CNPJ aberto há menos de 1 mês (${dias} dia${dias>1?'s':''})`;
+  }else if(mesesTotal<3){
+    nivel='alto';classe='badge-orange';icone='⚠';
+    texto=`CNPJ aberto há menos de 3 meses`;
+  }else if(mesesTotal<6){
+    nivel='medio';classe='badge-yellow';icone='⚠';
+    texto=`CNPJ aberto há menos de 6 meses`;
+  }else if(mesesTotal<12){
+    nivel='baixo';classe='badge-purple';icone='ⓘ';
+    texto=`CNPJ aberto há menos de 1 ano`;
+  }
+  // Se >= 1 ano, sem alerta (nivel null)
+
+  return {dias,meses:mesesTotal,anos,humano,nivel,classe,icone,texto};
+}
+
+// ═════════════════ EXTRAÇÃO DE CNPJs DA TEXTAREA ═════════════════
+function extrairCNPJs(texto){
+  // Aceita CNPJ formatado ou apenas dígitos. Quebra por qualquer separador
+  // e mantém só os tokens com 14 dígitos (após remover não-dígitos).
+  const tokens=String(texto||'').split(/[\s,;]+/).map(s=>s.trim()).filter(Boolean);
+  const seen=new Set();
+  const out=[];
+  for(const tk of tokens){
+    const d=onlyDigits(tk);
+    if(d.length===14&&!seen.has(d)){seen.add(d);out.push(d)}
+  }
+  return out;
+}
+
+// Atualiza contador conforme o usuário digita/cola
+const txt=document.getElementById('cnpjInput');
+const cnt=document.getElementById('cnpjCount');
+txt.addEventListener('input',()=>{cnt.textContent=extrairCNPJs(txt.value).length});
+
+// ═════════════════ TABS / MODAIS ═════════════════
+function abrirColar(){
+  document.getElementById('colarOverlay').classList.add('open');
+  setTimeout(()=>{const t=document.getElementById('cnpjInput');if(t)t.focus()},50);
+}
+function fecharColar(){
+  document.getElementById('colarOverlay').classList.remove('open');
+}
+
+// Fecha modais ao clicar fora ou pressionar Esc
+document.addEventListener('click',e=>{
+  if(e.target.id==='colarOverlay')fecharColar();
+  if(e.target.id==='filtroOverlay')cancelarFiltro();
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){fecharColar();cancelarFiltro()}
+});
+
+// ═════════════════ DROPZONE (idêntico ao CashTrail) ═════════════════
+const dz=document.getElementById('dropzone');
+const fi=document.getElementById('fileInput');
+dz.onclick=()=>fi.click();
+dz.ondragover=e=>{e.preventDefault();dz.classList.add('over')};
+dz.ondragleave=()=>dz.classList.remove('over');
+dz.ondrop=e=>{e.preventDefault();dz.classList.remove('over');if(e.dataTransfer.files[0])lerPlanilha(e.dataTransfer.files[0])};
+fi.onchange=e=>{if(e.target.files[0])lerPlanilha(e.target.files[0])};
+
+// ═════════════════ DADOS DA PLANILHA + FILTROS ═════════════════
+let PLANILHA=[];   // array de {cnpj, ano, mes} lidos da planilha
+let SEL_ANOS=new Set();
+let SEL_MESES=new Set();
+const NOMES_MES=['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+
+// Normaliza valor de mês: aceita número (1-12, "01"), sigla (JAN, FEV), nome completo (JANEIRO),
+// ou formatos compostos como "01/2026" ou "JAN/2026" - extrai a parte do mês.
+function normMes(v){
+  if(v==null||v==='')return null;
+  const s=String(v).trim().toUpperCase();
+  // 1. Tenta como número puro (com possível parte fracionária ".0")
+  const numMatch=s.match(/^(\d{1,2})(?:\D|$)/);
+  if(numMatch){
+    const n=parseInt(numMatch[1],10);
+    if(n>=1&&n<=12)return n;
+  }
+  // 2. Tenta sigla de 3 letras (JAN, FEV, MAR...)
+  const sigla=s.replace(/[^A-ZÇ]/g,'').slice(0,3);
+  const idx=NOMES_MES.indexOf(sigla);
+  if(idx>=0)return idx+1;
+  // 3. Nomes completos em PT
+  const completos={
+    'JANEIRO':1,'FEVEREIRO':2,'MARCO':3,'MARÇO':3,'ABRIL':4,'MAIO':5,'JUNHO':6,
+    'JULHO':7,'AGOSTO':8,'SETEMBRO':9,'OUTUBRO':10,'NOVEMBRO':11,'DEZEMBRO':12
+  };
+  const limpo=s.replace(/[^A-ZÇ]/g,'');
+  if(completos[limpo])return completos[limpo];
+  return null;
+}
+function normAno(v){
+  if(v==null||v==='')return null;
+  // Aceita float ("2024.0"), arredondando
+  const f=parseFloat(String(v).replace(',','.'));
+  if(isNaN(f))return null;
+  const n=Math.round(f);
+  if(n>=2000&&n<=2100)return n;
+  if(n>=0&&n<=99)return 2000+n;
+  return null;
+}
+
+function lerPlanilha(file){
+  showError('');
+  // Mostra spinner dentro do dropzone
+  document.getElementById('uploadContent').style.display='none';
+  document.getElementById('uploadLoading').style.display='block';
+  document.getElementById('dropzoneState').textContent=`Lendo "${file.name}"…`;
+
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const wb=XLSX.read(ev.target.result,{type:'array',cellDates:false});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{defval:'',raw:true,header:1});
+      if(!rows.length)throw new Error('Planilha vazia.');
+
+      const header=(rows[0]||[]).map(h=>String(h||'').trim());
+      const findCol=(...patterns)=>{
+        for(let i=0;i<header.length;i++){
+          const h=header[i].toUpperCase();
+          if(patterns.some(p=>p.test(h)))return i;
+        }
+        return -1;
+      };
+      const cnpjCol=findCol(/CNPJ/);
+      const anoCol =findCol(/^ANO$/, /\bANO\b/);
+      const mesCol =findCol(/^M[EÊ]S$/, /\bM[EÊ]S\b/);
+
+      const temCabecalho=cnpjCol>=0;
+      const start=temCabecalho?1:0;
+      const cCnpj=temCabecalho?cnpjCol:0;
+
+      PLANILHA=[];
+      for(let i=start;i<rows.length;i++){
+        const r=rows[i]||[];
+        const cnpjBruto=r[cCnpj];
+        if(cnpjBruto===''||cnpjBruto==null)continue;
+        const cnpj=onlyDigits(String(cnpjBruto));
+        if(cnpj.length!==14)continue;
+        const ano=anoCol>=0?normAno(r[anoCol]):null;
+        const mes=mesCol>=0?normMes(r[mesCol]):null;
+        PLANILHA.push({cnpj,ano,mes});
+      }
+      if(!PLANILHA.length)throw new Error('Nenhum CNPJ válido encontrado na planilha.');
+
+      // Volta ao estado normal do dropzone
+      restaurarDropzone();
+      document.getElementById('dropzoneState').textContent=
+        `${file.name} · ${PLANILHA.length.toLocaleString('pt-BR')} linhas · ${new Set(PLANILHA.map(r=>r.cnpj)).size.toLocaleString('pt-BR')} CNPJs únicos`;
+
+      const temAno=anoCol>=0&&PLANILHA.some(r=>r.ano!=null);
+      const temMes=mesCol>=0&&PLANILHA.some(r=>r.mes!=null);
+      if(!temAno&&!temMes){
+        const cnpjs=[...new Set(PLANILHA.map(r=>r.cnpj))];
+        consultarLista(cnpjs);
+        return;
+      }
+
+      abrirFiltros(file.name,temAno,temMes);
+    }catch(err){
+      restaurarDropzone();
+      document.getElementById('dropzoneState').textContent='Nenhuma consulta ativa';
+      showError('Erro ao ler planilha: '+err.message);
+    }
+  };
+  reader.onerror=()=>{
+    restaurarDropzone();
+    showError('Falha ao ler o arquivo.');
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function restaurarDropzone(){
+  document.getElementById('uploadContent').style.display='block';
+  document.getElementById('uploadLoading').style.display='none';
+}
+
+function abrirFiltros(fileName,temAno,temMes){
+  const totalLinhas=PLANILHA.length;
+  const cnpjsUnicos=new Set(PLANILHA.map(r=>r.cnpj)).size;
+  document.getElementById('filterSub').textContent=
+    `${fileName} · ${totalLinhas.toLocaleString('pt-BR')} linhas · ${cnpjsUnicos.toLocaleString('pt-BR')} CNPJs únicos`;
+
+  // Anos
+  const anos=[...new Set(PLANILHA.map(r=>r.ano).filter(a=>a!=null))].sort((a,b)=>b-a); // mais recentes primeiro
+  SEL_ANOS=new Set(anos);
+  const cAno=document.getElementById('chipsAno');
+  if(temAno&&anos.length){
+    cAno.innerHTML=anos.map(a=>`
+      <div class="select-item checked" data-tipo="ano" data-val="${a}" onclick="toggleChip(this)">
+        <span class="cbx"></span>
+        <span class="select-item-label">${a}</span>
+      </div>`).join('');
+    cAno.parentElement.style.display='block';
+  }else{
+    cAno.parentElement.style.display='none';
+  }
+
+  // Meses
+  const meses=[...new Set(PLANILHA.map(r=>r.mes).filter(m=>m!=null))].sort((a,b)=>a-b);
+  SEL_MESES=new Set(meses);
+  const cMes=document.getElementById('chipsMes');
+  if(temMes&&meses.length){
+    cMes.innerHTML=meses.map(m=>`
+      <div class="select-item checked" data-tipo="mes" data-val="${m}" onclick="toggleChip(this)">
+        <span class="cbx"></span>
+        <span class="select-item-label">${String(m).padStart(2,'0')} · ${NOMES_MES[m-1]}</span>
+      </div>`).join('');
+    cMes.parentElement.style.display='block';
+  }else{
+    cMes.parentElement.style.display='none';
+  }
+
+  document.getElementById('filtroOverlay').classList.add('open');
+  atualizaContadorFiltro();
+}
+
+function toggleChip(el){
+  const tipo=el.dataset.tipo;
+  const val=parseInt(el.dataset.val,10);
+  const set=tipo==='ano'?SEL_ANOS:SEL_MESES;
+  if(set.has(val)){set.delete(val);el.classList.remove('checked')}
+  else{set.add(val);el.classList.add('checked')}
+  atualizaContadorFiltro();
+}
+
+function toggleAll(tipo,liga){
+  const sel=document.querySelectorAll(`#chips${tipo==='ano'?'Ano':'Mes'} .select-item`);
+  const set=tipo==='ano'?SEL_ANOS:SEL_MESES;
+  set.clear();
+  sel.forEach(el=>{
+    const v=parseInt(el.dataset.val,10);
+    el.classList.toggle('checked',liga);
+    if(liga)set.add(v);
+  });
+  atualizaContadorFiltro();
+}
+
+function atualizaContadorFiltro(){
+  const cnpjs=cnpjsFiltrados();
+  document.getElementById('filterCount').textContent=cnpjs.length.toLocaleString('pt-BR');
+  document.getElementById('btnFiltro').disabled=cnpjs.length===0;
+  // Atualiza pílulas com contagem dos selecionados
+  const aSel=document.querySelectorAll('#chipsAno .select-item.checked').length;
+  const mSel=document.querySelectorAll('#chipsMes .select-item.checked').length;
+  const aTotal=document.querySelectorAll('#chipsAno .select-item').length;
+  const mTotal=document.querySelectorAll('#chipsMes .select-item').length;
+  const elA=document.getElementById('anoSelCount');
+  const elM=document.getElementById('mesSelCount');
+  if(elA)elA.textContent=`${aSel}/${aTotal}`;
+  if(elM)elM.textContent=`${mSel}/${mTotal}`;
+}
+
+function cnpjsFiltrados(){
+  const temItensAno=document.querySelectorAll('#chipsAno .select-item').length>0;
+  const temItensMes=document.querySelectorAll('#chipsMes .select-item').length>0;
+  const filtrados=PLANILHA.filter(r=>{
+    if(temItensAno&&r.ano!=null&&!SEL_ANOS.has(r.ano))return false;
+    if(temItensMes&&r.mes!=null&&!SEL_MESES.has(r.mes))return false;
+    return true;
+  });
+  return [...new Set(filtrados.map(r=>r.cnpj))];
+}
+
+function consultarFiltrado(){
+  const cnpjs=cnpjsFiltrados();
+  if(!cnpjs.length){showError('Nenhum CNPJ no recorte selecionado.');return}
+  showError('');
+  document.getElementById('filtroOverlay').classList.remove('open');
+  consultarLista(cnpjs);
+}
+
+function cancelarFiltro(){
+  document.getElementById('filtroOverlay').classList.remove('open');
+  PLANILHA=[];
+  SEL_ANOS.clear(); SEL_MESES.clear();
+  document.getElementById('fileInput').value='';
+}
+
+// ═════════════════ CONSULTA ═════════════════
+function showError(msg){
+  const el=document.getElementById('uploadError');
+  if(!msg){el.style.display='none';el.textContent='';return}
+  el.textContent=msg;el.style.display='block';
+}
+
+function consultarManual(){
+  const cnpjs=extrairCNPJs(document.getElementById('cnpjInput').value);
+  if(!cnpjs.length){showError('Cole pelo menos um CNPJ válido (com 14 dígitos).');return}
+  showError('');
+  fecharColar();
+  consultarLista(cnpjs);
+}
+
+function setStatus(label,mode){
+  const dot=document.getElementById('statusDot');
+  const lbl=document.getElementById('statusLabel');
+  dot.classList.remove('off','busy');
+  if(mode==='off')dot.classList.add('off');
+  else if(mode==='busy')dot.classList.add('busy');
+  lbl.textContent=label;
+}
+
+let RESULTS=[];     // array de resultados (objeto normalizado)
+let CONSULTANDO=false;
+
+async function consultarLista(cnpjs){
+  if(CONSULTANDO)return;
+  CONSULTANDO=true;
+  document.getElementById('btnConsultar').disabled=true;
+  document.getElementById('btnImprimir').style.display='none';
+  document.getElementById('btnLimpar').style.display='inline-flex';
+  document.getElementById('kpiRow').classList.remove('empty');
+  // Esconde o dropzone enquanto há consulta (é restaurado no limparTudo / Trocar)
+  document.getElementById('dropzone').style.display='none';
+  document.getElementById('dropzoneState').style.display='none';
+
+  RESULTS=[];
+  document.getElementById('resultados').innerHTML='';
+  document.getElementById('kpiRow').style.display='none';
+
+  const wrap=document.getElementById('progressWrap');
+  const fill=document.getElementById('progressFill');
+  const num=document.getElementById('progressNum');
+  const now=document.getElementById('progressNow');
+  wrap.classList.add('active');
+  num.textContent=`0 / ${cnpjs.length}`;
+  fill.style.width='0%';
+  now.textContent='Iniciando…';
+  setStatus('Consultando…','busy');
+
+  for(let i=0;i<cnpjs.length;i++){
+    const cnpj=cnpjs[i];
+    now.textContent=`Consultando ${fmtCNPJ(cnpj)}…`;
+    let r;
+    if(!validaCNPJ(cnpj)){
+      r={cnpj,erro:'CNPJ com dígitos verificadores inválidos.',status:'erro'};
+    }else{
+      r=await consultarCNPJ(cnpj);
+    }
+    RESULTS.push(r);
+    renderResultado(r);
+    num.textContent=`${i+1} / ${cnpjs.length}`;
+    fill.style.width=((i+1)/cnpjs.length*100)+'%';
+    atualizaKPIs();
+    // Pequeno delay para não sobrecarregar e dar tempo do navegador respirar
+    if(i<cnpjs.length-1)await sleep(400);
+  }
+
+  now.textContent='Concluído.';
+  setStatus(`${RESULTS.length} consulta(s) concluída(s)`,'on');
+  document.getElementById('btnConsultar').disabled=false;
+  document.getElementById('btnImprimir').style.display='inline-flex';
+  CONSULTANDO=false;
+  atualizaContadoresAlerta();
+  atualizaBotaoRetry();
+
+  // Esconde a barra após uns instantes para limpar o layout
+  setTimeout(()=>{wrap.classList.remove('active')},1500);
+}
+
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+async function consultarCNPJ(cnpj){
+  const url=`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`;
+  const MAX_TENTATIVAS=3;
+  let ultimoErro='';
+
+  for(let tentativa=1;tentativa<=MAX_TENTATIVAS;tentativa++){
+    try{
+      const resp=await fetch(url,{headers:{'Accept':'application/json'}});
+      if(resp.status===404){
+        return {cnpj,erro:'CNPJ não encontrado na base da Receita.',status:'erro'};
+      }
+      if(resp.status===429){
+        // Rate limit: espera mais antes de tentar de novo
+        if(tentativa<MAX_TENTATIVAS){
+          await sleep(2000*tentativa);
+          continue;
+        }
+        return {cnpj,erro:'Limite de requisições atingido (429). Aguarde alguns instantes.',status:'erro'};
+      }
+      if(!resp.ok){
+        ultimoErro=`Erro HTTP ${resp.status}.`;
+        if(tentativa<MAX_TENTATIVAS){
+          await sleep(800*tentativa);
+          continue;
+        }
+        return {cnpj,erro:ultimoErro,status:'erro'};
+      }
+      const data=await resp.json();
+      return normalizar(cnpj,data);
+    }catch(err){
+      // Erro de rede / "Failed to fetch" → tenta de novo
+      ultimoErro='Falha de conexão: '+(err.message||err);
+      if(tentativa<MAX_TENTATIVAS){
+        // Atualiza a UI para mostrar a retentativa
+        const now=document.getElementById('progressNow');
+        if(now)now.textContent=`Falha temporária — tentativa ${tentativa+1} de ${MAX_TENTATIVAS} para ${fmtCNPJ(cnpj)}…`;
+        await sleep(1000*tentativa);
+        continue;
+      }
+    }
+  }
+  return {cnpj,erro:ultimoErro+' (após 3 tentativas)',status:'erro'};
+}
+
+// Normaliza o retorno da BrasilAPI para os campos pedidos
+function normalizar(cnpj,d){
+  const sit=String(d.descricao_situacao_cadastral||'').toUpperCase();
+  const ativo=sit==='ATIVA';
+  const qsa=Array.isArray(d.qsa)?d.qsa.map(s=>s.nome_socio||s.nome||'').filter(Boolean):[];
+  return {
+    cnpj,
+    status:ativo?'ok':'inativo',
+    nome:d.razao_social||'—',
+    fantasia:d.nome_fantasia||'',
+    abertura:fmtData(d.data_inicio_atividade),
+    situacao:d.descricao_situacao_cadastral||'—',
+    motivo:d.descricao_motivo_situacao_cadastral||'',
+    porte:d.porte||'',
+    atividade:d.cnae_fiscal_descricao||'—',
+    cnaeCodigo:d.cnae_fiscal||'',
+    qsa,
+    municipio:d.municipio||'—',
+    uf:d.uf||'',
+    email:d.email||'',
+    telefone:fmtTel(d.ddd_telefone_1||''),
+    telefone2:fmtTel(d.ddd_telefone_2||''),
+    capital:d.capital_social!=null?d.capital_social:''
+  };
+}
+
+// ═════════════════ RENDER ═════════════════
+// Normaliza string para busca: minúsculo, sem acentos, sem pontuação extra
+function normSearch(s){
+  return String(s||'')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'') // remove acentos
+    .replace(/\s+/g,' ').trim();
+}
+
+function aplicarBusca(){
+  const inp=document.getElementById('searchInput');
+  if(!inp)return;
+  const termo=normSearch(inp.value);
+  const filtroAtivo=!ALERT_FILTER.has('todos');
+  const cards=document.querySelectorAll('#resList .forn-card');
+  let visiveis=0;
+  cards.forEach(c=>{
+    const hay=c.dataset.search||'';
+    const alerta=c.dataset.alert||'sem';
+    const matchTexto=!termo||hay.includes(termo);
+    const matchAlerta=!filtroAtivo||ALERT_FILTER.has(alerta);
+    const visivel=matchTexto&&matchAlerta;
+    c.classList.toggle('hidden-by-search',!visivel);
+    if(visivel)visiveis++;
+  });
+
+  // Atualiza contador e botão de limpar
+  const cnt=document.getElementById('searchCount');
+  const clr=document.getElementById('searchClear');
+  if(termo){
+    cnt.textContent=`${visiveis} de ${cards.length}`;
+    clr.style.display='flex';
+  }else{
+    cnt.textContent=filtroAtivo
+      ?`${visiveis} de ${cards.length}`
+      :`${cards.length} fornecedor${cards.length===1?'':'es'}`;
+    clr.style.display='none';
+  }
+
+  const empty=document.getElementById('resEmpty');
+  if(empty){
+    empty.style.display=(visiveis===0&&cards.length>0)?'block':'none';
+  }
+
+  atualizaKPIsFiltrado();
+}
+
+let ALERT_FILTER=new Set(['todos']);
+
+function setAlertFilter(f){
+  if(f==='todos'){
+    // "Todos" limpa os outros
+    ALERT_FILTER=new Set(['todos']);
+  }else{
+    // Remove "todos" se estava ativo, e alterna o clicado
+    ALERT_FILTER.delete('todos');
+    if(ALERT_FILTER.has(f))ALERT_FILTER.delete(f);
+    else ALERT_FILTER.add(f);
+    // Se não sobrou nenhum, volta para "Todos"
+    if(ALERT_FILTER.size===0)ALERT_FILTER=new Set(['todos']);
+  }
+  document.querySelectorAll('.alert-chip').forEach(b=>{
+    b.classList.toggle('active',ALERT_FILTER.has(b.dataset.alert));
+  });
+  aplicarBusca();
+}
+
+function atualizaContadoresAlerta(){
+  const cards=[...document.querySelectorAll('#resList .forn-card')];
+  const cnt={critico:0,alto:0,medio:0,baixo:0,sem:0,erro:0};
+  cards.forEach(c=>{
+    const a=c.dataset.alert||'sem';
+    if(cnt[a]!=null)cnt[a]++;
+  });
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v};
+  set('cntCritico',cnt.critico);
+  set('cntAlto',cnt.alto);
+  set('cntMedio',cnt.medio);
+  set('cntBaixo',cnt.baixo);
+  set('cntSem',cnt.sem);
+  set('cntErro',cnt.erro);
+
+  // Esconde chips com 0 (exceto "Todos")
+  document.querySelectorAll('.alert-chip').forEach(b=>{
+    const a=b.dataset.alert;
+    if(a==='todos')return;
+    b.style.display=cnt[a]>0?'inline-flex':'none';
+  });
+}
+
+// ═════════════════ RETRY DE FALHAS ═════════════════
+function atualizaBotaoRetry(){
+  const btn=document.getElementById('btnRetryAll');
+  if(!btn)return;
+  const falhas=RESULTS.filter(r=>r.status==='erro').length;
+  document.getElementById('retryCount').textContent=falhas;
+  btn.style.display=falhas>0?'inline-flex':'none';
+}
+
+async function retentarFalhas(){
+  if(CONSULTANDO)return;
+  const cnpjsFalha=RESULTS.filter(r=>r.status==='erro').map(r=>r.cnpj);
+  if(!cnpjsFalha.length)return;
+  CONSULTANDO=true;
+  document.getElementById('btnRetryAll').disabled=true;
+
+  const wrap=document.getElementById('progressWrap');
+  const fill=document.getElementById('progressFill');
+  const num=document.getElementById('progressNum');
+  const now=document.getElementById('progressNow');
+  wrap.classList.add('active');
+  num.textContent=`0 / ${cnpjsFalha.length}`;
+  fill.style.width='0%';
+  now.textContent='Reconsultando falhas…';
+  setStatus('Reconsultando falhas…','busy');
+
+  for(let i=0;i<cnpjsFalha.length;i++){
+    const cnpj=cnpjsFalha[i];
+    now.textContent=`Reconsultando ${fmtCNPJ(cnpj)}…`;
+    let novo;
+    if(!validaCNPJ(cnpj)){
+      novo={cnpj,erro:'CNPJ com dígitos verificadores inválidos.',status:'erro'};
+    }else{
+      novo=await consultarCNPJ(cnpj);
+    }
+    // Substitui no array RESULTS
+    const idx=RESULTS.findIndex(r=>r.cnpj===cnpj);
+    if(idx>=0)RESULTS[idx]=novo;
+    // Substitui o card no DOM
+    const cardAntigo=document.querySelector(`#resList .forn-card[data-cnpj="${cnpj}"]`);
+    if(cardAntigo){
+      const tmp=document.createElement('div');
+      tmp.innerHTML=cardHTML(novo);
+      cardAntigo.replaceWith(tmp.firstElementChild);
+    }
+    num.textContent=`${i+1} / ${cnpjsFalha.length}`;
+    fill.style.width=((i+1)/cnpjsFalha.length*100)+'%';
+    atualizaContadoresAlerta();
+    aplicarBusca();
+    atualizaKPIsFiltrado();
+    if(i<cnpjsFalha.length-1)await sleep(400);
+  }
+
+  // Resumo
+  const aindaFalha=RESULTS.filter(r=>r.status==='erro').length;
+  const recuperados=cnpjsFalha.length-aindaFalha;
+  now.textContent=`Reconsulta concluída · ${recuperados} recuperado(s)${aindaFalha?`, ${aindaFalha} ainda em falha`:''}.`;
+  setStatus(`${RESULTS.length} consulta(s) · ${aindaFalha} falha(s)`,'on');
+  document.getElementById('btnRetryAll').disabled=false;
+  CONSULTANDO=false;
+  atualizaBotaoRetry();
+  setTimeout(()=>{wrap.classList.remove('active')},2000);
+}
+
+async function retentarUm(cnpj){
+  if(CONSULTANDO)return;
+  CONSULTANDO=true;
+  setStatus(`Reconsultando ${fmtCNPJ(cnpj)}…`,'busy');
+
+  let novo;
+  if(!validaCNPJ(cnpj)){
+    novo={cnpj,erro:'CNPJ com dígitos verificadores inválidos.',status:'erro'};
+  }else{
+    novo=await consultarCNPJ(cnpj);
+  }
+  const idx=RESULTS.findIndex(r=>r.cnpj===cnpj);
+  if(idx>=0)RESULTS[idx]=novo;
+  const cardAntigo=document.querySelector(`#resList .forn-card[data-cnpj="${cnpj}"]`);
+  if(cardAntigo){
+    const tmp=document.createElement('div');
+    tmp.innerHTML=cardHTML(novo);
+    cardAntigo.replaceWith(tmp.firstElementChild);
+  }
+  atualizaContadoresAlerta();
+  aplicarBusca();
+  atualizaKPIsFiltrado();
+  atualizaBotaoRetry();
+  CONSULTANDO=false;
+
+  const aindaFalha=RESULTS.filter(r=>r.status==='erro').length;
+  setStatus(`${RESULTS.length} consulta(s)${aindaFalha?` · ${aindaFalha} falha(s)`:''}`,'on');
+}
+
+function limparBusca(){
+  const inp=document.getElementById('searchInput');
+  if(inp){inp.value='';aplicarBusca();inp.focus()}
+}
+
+function atualizaKPIsFiltrado(){
+  // Considera apenas os cards visíveis para os KPIs
+  const visiveis=[...document.querySelectorAll('#resList .forn-card')]
+    .filter(c=>!c.classList.contains('hidden-by-search'));
+  const kpiRow=document.getElementById('kpiRow');
+  if(!visiveis.length&&!RESULTS.length){
+    // Sem dados ainda - mantém em estado vazio
+    kpiRow.classList.add('empty');
+    document.getElementById('kpiTotal').textContent='—';
+    document.getElementById('kpiAtivos').textContent='—';
+    document.getElementById('kpiInativos').textContent='—';
+    document.getElementById('kpiRecentes').textContent='—';
+    document.getElementById('kpiErros').textContent='—';
+    return;
+  }
+  kpiRow.classList.remove('empty');
+  const cnpjsVisiveis=new Set(
+    visiveis.map(c=>{
+      const el=c.querySelector('.forn-cnpj');
+      return el?onlyDigits(el.textContent):'';
+    }).filter(Boolean)
+  );
+  const termo=document.getElementById('searchInput')?.value;
+  const base=termo?RESULTS.filter(r=>cnpjsVisiveis.has(r.cnpj)):RESULTS;
+  const total=base.length;
+  const ativos=base.filter(r=>r.status==='ok').length;
+  const inativos=base.filter(r=>r.status==='inativo').length;
+  const erros=base.filter(r=>r.status==='erro').length;
+  const recentes=base.filter(r=>{
+    if(r.status==='erro')return false;
+    const ab=avaliaAbertura(r.abertura);
+    return ab&&ab.nivel;
+  }).length;
+  document.getElementById('kpiTotal').textContent=total;
+  document.getElementById('kpiAtivos').textContent=ativos;
+  document.getElementById('kpiInativos').textContent=inativos;
+  document.getElementById('kpiRecentes').textContent=recentes;
+  document.getElementById('kpiErros').textContent=erros;
+}
+
+function atualizaKPIs(){
+  // chamado durante a consulta (sem busca aplicada)
+  atualizaKPIsFiltrado();
+}
+
+function renderResultado(r){
+  const cont=document.getElementById('resultados');
+  if(!cont.querySelector('.card')){
+    cont.innerHTML=`<div class="card"><div class="card-title">
+      <span>Resultados da consulta</span>
+      <span class="actions">
+        <button class="btn-mini retry" id="btnRetryAll" onclick="retentarFalhas()" style="display:none">
+          ↻ Tentar novamente as falhas (<span id="retryCount">0</span>)
+        </button>
+      </span>
+    </div>
+    <div class="search-bar no-print">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="searchInput" placeholder="Buscar por nome, fantasia, CNPJ, município ou sócio…" oninput="aplicarBusca()" autocomplete="off">
+      <button class="search-clear" id="searchClear" onclick="limparBusca()" style="display:none">✕</button>
+      <span class="search-count mono" id="searchCount"></span>
+    </div>
+
+    <div class="alert-filters no-print" id="alertFilters">
+      <span class="alert-filters-label">Filtrar por alerta:</span>
+      <button class="alert-chip active" data-alert="todos" onclick="setAlertFilter('todos')">Todos</button>
+      <button class="alert-chip alert-critico" data-alert="critico" onclick="setAlertFilter('critico')">🚨 Crítico <span class="alert-chip-count" id="cntCritico">0</span></button>
+      <button class="alert-chip alert-alto" data-alert="alto" onclick="setAlertFilter('alto')">⚠ Alto <span class="alert-chip-count" id="cntAlto">0</span></button>
+      <button class="alert-chip alert-medio" data-alert="medio" onclick="setAlertFilter('medio')">⚠ Médio <span class="alert-chip-count" id="cntMedio">0</span></button>
+      <button class="alert-chip alert-baixo" data-alert="baixo" onclick="setAlertFilter('baixo')">ⓘ Baixo <span class="alert-chip-count" id="cntBaixo">0</span></button>
+      <button class="alert-chip alert-sem" data-alert="sem" onclick="setAlertFilter('sem')">✓ Sem alerta <span class="alert-chip-count" id="cntSem">0</span></button>
+      <button class="alert-chip alert-erro" data-alert="erro" onclick="setAlertFilter('erro')">⚠ Falhas <span class="alert-chip-count" id="cntErro">0</span></button>
+    </div>
+
+    <div id="resList"></div>
+    <div id="resEmpty" class="search-empty" style="display:none">
+      <span class="empty-icon">🔍</span>
+      Nenhum fornecedor corresponde aos filtros aplicados.
+    </div></div>`;
+  }
+  const list=document.getElementById('resList');
+  list.insertAdjacentHTML('beforeend',cardHTML(r));
+  aplicarBusca();
+  atualizaContadoresAlerta();
+  atualizaBotaoRetry();
+}
+
+function cardHTML(r){
+  // Texto pesquisável (lowercase, sem acentos, juntando os campos relevantes)
+  const haystack=normSearch([
+    r.cnpj, fmtCNPJ(r.cnpj),
+    r.nome, r.fantasia,
+    r.municipio, r.uf,
+    r.atividade, r.cnaeCodigo,
+    r.email, r.telefone, r.telefone2,
+    r.situacao, r.porte,
+    ...(r.qsa||[])
+  ].filter(Boolean).join(' '));
+
+  if(r.status==='erro'){
+    return `<div class="forn-card error" data-search="${esc(haystack)}" data-alert="erro" data-cnpj="${esc(r.cnpj)}">
+      <div class="forn-head">
+        <div>
+          <div class="forn-name">CNPJ não consultado</div>
+          <div class="forn-cnpj">${esc(fmtCNPJ(r.cnpj))}</div>
+        </div>
+        <span class="badge badge-red">FALHA</span>
+      </div>
+      <div class="error-msg">⚠ ${esc(r.erro||'Erro desconhecido')}</div>
+      <button class="btn-mini retry no-print" onclick="retentarUm('${esc(r.cnpj)}')" style="margin-top:10px">↻ Tentar de novo</button>
+    </div>`;
+  }
+
+  const cls=r.status==='ok'?'ok':'inactive';
+  const sitBadge=r.status==='ok'
+    ? `<span class="badge badge-green">${esc(r.situacao)}</span>`
+    : `<span class="badge badge-yellow">${esc(r.situacao)}</span>`;
+
+  // Avaliação de tempo desde a abertura
+  const ab=avaliaAbertura(r.abertura);
+  const aberturaClass=ab&&ab.nivel?`abertura-${ab.nivel}`:'';
+  const dataAlert=ab&&ab.nivel?ab.nivel:'sem';
+  const aberturaBadge=ab&&ab.nivel
+    ? `<span class="badge ${ab.classe}">${ab.icone} ${esc(ab.texto)}</span>`
+    : '';
+  const aberturaInfo=ab
+    ? `<span class="abertura-humano">${esc(ab.humano)}</span>`
+    : '';
+
+  const qsaHTML=r.qsa.length
+    ? `<div class="qsa-list">${r.qsa.map(n=>`<span class="qsa-item">${esc(n)}</span>`).join('')}</div>`
+    : `<div class="forn-field-value muted">Nenhum sócio informado</div>`;
+
+  const fantasiaHTML=r.fantasia?`<div class="forn-fant">${esc(r.fantasia)}</div>`:'';
+  const motivoHTML=r.motivo&&r.status!=='ok'?`<div class="forn-field-value" style="margin-top:4px;color:var(--warm)">Motivo: ${esc(r.motivo)}</div>`:'';
+
+  const emailVal=r.email
+    ? `<a href="mailto:${esc(r.email)}">${esc(r.email)}</a>`
+    : `<span class="muted" title="A Receita Federal só publica o e-mail quando o contribuinte cadastra como público. Para muitos CNPJs este campo vem vazio na fonte oficial.">Não disponível na Receita</span>`;
+  const telVal=r.telefone||'—';
+  const telExtra=r.telefone2?`<div class="forn-field-value" style="font-size:11px;color:var(--mist)">2º: ${esc(r.telefone2)}</div>`:'';
+
+  return `<div class="forn-card ${cls} ${aberturaClass}" data-search="${esc(haystack)}" data-alert="${esc(dataAlert)}" data-cnpj="${esc(r.cnpj)}">
+    <div class="forn-head">
+      <div>
+        <div class="forn-name">${esc(r.nome)}</div>
+        ${fantasiaHTML}
+        <div class="forn-cnpj">${esc(fmtCNPJ(r.cnpj))}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+        ${sitBadge}
+        ${r.porte?`<span class="badge badge-blue">${esc(r.porte)}</span>`:''}
+        ${aberturaBadge}
+      </div>
+    </div>
+
+    <div class="forn-grid">
+      <div class="forn-field">
+        <div class="forn-field-label">Data de abertura</div>
+        <div class="forn-field-value mono">${esc(r.abertura)}</div>
+        ${aberturaInfo}
+      </div>
+      <div class="forn-field">
+        <div class="forn-field-label">Município</div>
+        <div class="forn-field-value">${esc(r.municipio)}${r.uf?' / '+esc(r.uf):''}</div>
+      </div>
+      <div class="forn-field">
+        <div class="forn-field-label">Telefone</div>
+        <div class="forn-field-value mono">${esc(telVal)}</div>
+        ${telExtra}
+      </div>
+      <div class="forn-field">
+        <div class="forn-field-label">E-mail</div>
+        <div class="forn-field-value">${emailVal}</div>
+      </div>
+      <div class="forn-field" style="grid-column:1/-1">
+        <div class="forn-field-label">Atividade principal (CNAE${r.cnaeCodigo?' '+esc(r.cnaeCodigo):''})</div>
+        <div class="forn-field-value">${esc(r.atividade)}</div>
+      </div>
+      <div class="forn-field" style="grid-column:1/-1">
+        <div class="forn-field-label">Quadro de sócios e administradores</div>
+        ${qsaHTML}
+      </div>
+    </div>
+    ${motivoHTML}
+  </div>`;
+}
+
+// ═════════════════ AÇÕES ═════════════════
+function imprimir(){
+  if(!RESULTS.length)return;
+
+  // Conta visíveis (após filtros)
+  const visiveis=[...document.querySelectorAll('#resList .forn-card')]
+    .filter(c=>!c.classList.contains('hidden-by-search')).length;
+  const total=RESULTS.length;
+
+  // Data atual formatada
+  const hoje=new Date();
+  const dataStr=hoje.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const horaStr=hoje.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('printDate').textContent=`Emitido em ${dataStr} às ${horaStr}`;
+
+  // Escopo: indica se há filtros aplicados
+  const termo=document.getElementById('searchInput')?.value?.trim();
+  const labels={critico:'Crítico',alto:'Alto',medio:'Médio',baixo:'Baixo',sem:'Sem alerta',erro:'Falhas'};
+  const labelsArquivo={critico:'Critico',alto:'Alto',medio:'Medio',baixo:'Baixo',sem:'SemAlerta',erro:'Falhas'};
+
+  const partes=[];
+  partes.push(visiveis===total?`${total} fornecedor${total===1?'':'es'}`:`${visiveis} de ${total} fornecedores`);
+  if(termo)partes.push(`busca: "${termo}"`);
+
+  const filtrosAtivos=[...ALERT_FILTER].filter(f=>f!=='todos');
+  if(filtrosAtivos.length){
+    const nomes=filtrosAtivos.map(f=>labels[f]||f).join(', ');
+    partes.push(`alertas: ${nomes}`);
+  }
+  document.getElementById('printScope').textContent=partes.join(' · ');
+
+  // Gera nome de arquivo: Hub-Compliance_<filtros>_<data>.pdf
+  // O navegador usa document.title como nome sugerido ao salvar como PDF
+  const dataArq=hoje.toISOString().slice(0,10); // YYYY-MM-DD
+  const partesNome=['Hub-Compliance'];
+  if(filtrosAtivos.length){
+    // até 3 nomes de filtro pra não ficar gigante
+    const nomesArq=filtrosAtivos.slice(0,3).map(f=>labelsArquivo[f]||f);
+    partesNome.push(nomesArq.join('-'));
+  }else{
+    partesNome.push('Auditoria');
+  }
+  partesNome.push(dataArq);
+  const nomeArquivo=partesNome.join('_');
+
+  // Guarda título original e troca temporariamente
+  const tituloOriginal=document.title;
+  document.title=nomeArquivo;
+
+  // Restaura o título depois da impressão
+  const restaurar=()=>{document.title=tituloOriginal};
+  window.addEventListener('afterprint',restaurar,{once:true});
+  // Fallback: restaura após 3s caso afterprint não dispare (alguns navegadores)
+  setTimeout(restaurar,3000);
+
+  window.print();
+}
+
+function limparTudo(){
+  if(CONSULTANDO)return;
+  RESULTS=[];
+  document.getElementById('resultados').innerHTML='';
+  // KPIs voltam ao estado vazio
+  const kpiRow=document.getElementById('kpiRow');
+  kpiRow.classList.add('empty');
+  ['kpiTotal','kpiAtivos','kpiInativos','kpiRecentes','kpiErros'].forEach(id=>{
+    document.getElementById(id).textContent='—';
+  });
+  document.getElementById('cnpjInput').value='';
+  document.getElementById('cnpjCount').textContent='0';
+  document.getElementById('fileInput').value='';
+  document.getElementById('btnImprimir').style.display='none';
+  document.getElementById('btnLimpar').style.display='none';
+  document.getElementById('progressWrap').classList.remove('active');
+  // fecha modais
+  fecharColar();
+  document.getElementById('filtroOverlay').classList.remove('open');
+  // restaura dropzone
+  document.getElementById('dropzone').style.display='flex';
+  document.getElementById('dropzoneState').style.display='block';
+  restaurarDropzone();
+  document.getElementById('dropzoneState').textContent='Nenhuma consulta ativa';
+  // limpa filtros
+  PLANILHA=[];
+  SEL_ANOS.clear(); SEL_MESES.clear();
+  ALERT_FILTER=new Set(['todos']);
+  showError('');
+  setStatus('Sem dados','off');
+}
+</script>
+</body>
+</html>
