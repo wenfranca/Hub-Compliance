@@ -405,7 +405,7 @@ body::before{
    ═══════════════════════════════════════════════════════════════ */
 .kpis{
   display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
-  gap:14px; margin-bottom:24px;
+  gap:14px; margin-bottom:16px;
 }
 .kpi{
   background:var(--panel); border:1px solid var(--rim);
@@ -504,10 +504,10 @@ body::before{
 }
 
 .forn-grid{
-  display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
-  gap:14px 22px;
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:10px 24px;
 }
-.forn-field{display:flex; flex-direction:column; gap:3px}
+.forn-field{display:flex; flex-direction:column; gap:2px}
 .forn-field-label{
   font-size:9px; color:var(--fog);
   text-transform:uppercase; letter-spacing:.7px; font-weight:700;
@@ -735,7 +735,7 @@ body::before{
    IMPRESSÃO / PDF
    ═══════════════════════════════════════════════════════════════ */
 @media print{
-  @page{size:A4; margin:12mm 12mm 14mm 12mm}
+  @page{size:A4; margin:12mm 12mm 20mm 12mm}
   html, body{
     background:#fff !important; color:#000 !important;
     font-size:9.5pt;
@@ -842,7 +842,7 @@ body::before{
 
   .forn-grid{
     grid-template-columns:1fr 1fr !important;
-    gap:5px 10px !important;
+    gap:6px 16px !important;
   }
   .forn-field-label{
     color:#555 !important; font-size:6.5pt;
@@ -853,6 +853,12 @@ body::before{
     line-height:1.3;
   }
   .forn-field-value a{color:#0a3a8c !important; text-decoration:none}
+  /* separador antes de atividade/CNAE e QSA */
+  .forn-grid .forn-field[style*="border-top"]{
+    border-top:1px solid #ccc !important;
+    padding-top:5px !important;
+    margin-top:1px !important;
+  }
 
   .qsa-list{gap:2px !important; margin-top:1px !important}
   .qsa-item{
@@ -882,10 +888,12 @@ body::before{
   .abertura-medio .abertura-humano{color:#9a6300 !important; font-weight:600}
   .abertura-baixo .abertura-humano{color:#5e2ca5 !important; font-weight:600}
 
-  /* Rodapé do relatório */
+  /* Rodapé — fixo na margem inferior de CADA página impressa */
   #printFooter{
-    margin-top:10px; padding:5px 0;
+    position:fixed; bottom:0; left:0; right:0;
+    padding:4px 12mm;
     border-top:1px solid #aaa !important;
+    background:#fff !important;
     color:#555 !important; font-size:7.5pt;
     display:flex; justify-content:space-between; flex-wrap:wrap;
     letter-spacing:.3px;
@@ -966,7 +974,7 @@ body::before{
 
     <div id="uploadError" class="upload-error"></div>
 
-    <!-- DROPZONE GRANDE no topo (idêntico ao CashTrail) -->
+    <!-- DROPZONE -->
     <div class="dropzone" id="dropzone">
       <div id="uploadContent" style="position:relative;z-index:1">
         <span class="dz-icon">📂</span>
@@ -991,15 +999,6 @@ body::before{
       </div>
       <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
       <div class="progress-now mono" id="progressNow">Aguardando início…</div>
-    </div>
-
-    <!-- KPIs (visíveis desde o início, com valores em traço) -->
-    <div class="kpis empty" id="kpiRow">
-      <div class="kpi"><div class="kpi-label">Consultados</div><div class="kpi-value" id="kpiTotal">—</div></div>
-      <div class="kpi"><div class="kpi-label">Ativos</div><div class="kpi-value" id="kpiAtivos">—</div></div>
-      <div class="kpi"><div class="kpi-label">Não ativos</div><div class="kpi-value" id="kpiInativos">—</div></div>
-      <div class="kpi"><div class="kpi-label">Recém-abertos (&lt; 1 ano)</div><div class="kpi-value" id="kpiRecentes">—</div></div>
-      <div class="kpi"><div class="kpi-label">Falhas / Não encontrados</div><div class="kpi-value" id="kpiErros">—</div></div>
     </div>
 
     <!-- RESULTADOS -->
@@ -1535,14 +1534,12 @@ async function consultarLista(cnpjs){
   document.getElementById('btnConsultar').disabled=true;
   document.getElementById('btnImprimir').style.display='none';
   document.getElementById('btnLimpar').style.display='inline-flex';
-  document.getElementById('kpiRow').classList.remove('empty');
   // Esconde o dropzone enquanto há consulta (é restaurado no limparTudo / Trocar)
   document.getElementById('dropzone').style.display='none';
   document.getElementById('dropzoneState').style.display='none';
 
   RESULTS=[];
   document.getElementById('resultados').innerHTML='';
-  document.getElementById('kpiRow').style.display='none';
 
   const wrap=document.getElementById('progressWrap');
   const fill=document.getElementById('progressFill');
@@ -1849,6 +1846,7 @@ function atualizaKPIsFiltrado(){
   const visiveis=[...document.querySelectorAll('#resList .forn-card')]
     .filter(c=>!c.classList.contains('hidden-by-search'));
   const kpiRow=document.getElementById('kpiRow');
+  if(!kpiRow)return; // ainda não foi criado (antes do primeiro resultado)
   if(!visiveis.length&&!RESULTS.length){
     // Sem dados ainda - mantém em estado vazio
     kpiRow.classList.add('empty');
@@ -1899,6 +1897,13 @@ function renderResultado(r){
           ↻ Tentar novamente as falhas (<span id="retryCount">0</span>)
         </button>
       </span>
+    </div>
+    <div class="kpis empty" id="kpiRow" style="margin-bottom:18px">
+      <div class="kpi"><div class="kpi-label">Consultados</div><div class="kpi-value" id="kpiTotal">—</div></div>
+      <div class="kpi"><div class="kpi-label">Ativos</div><div class="kpi-value" id="kpiAtivos">—</div></div>
+      <div class="kpi"><div class="kpi-label">Não ativos</div><div class="kpi-value" id="kpiInativos">—</div></div>
+      <div class="kpi"><div class="kpi-label">Recém-abertos (&lt; 1 ano)</div><div class="kpi-value" id="kpiRecentes">—</div></div>
+      <div class="kpi"><div class="kpi-label">Falhas / Não encontrados</div><div class="kpi-value" id="kpiErros">—</div></div>
     </div>
     <div class="search-bar no-print">
       <span class="search-icon">🔍</span>
@@ -2023,7 +2028,7 @@ function cardHTML(r){
         <div class="forn-field-label">Capital social</div>
         <div class="forn-field-value mono">${r.capital!==''&&r.capital!=null?Number(r.capital).toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2}):'—'}</div>
       </div>
-      <div class="forn-field" style="grid-column:1/-1">
+      <div class="forn-field" style="grid-column:1/-1;border-top:1px solid var(--rim);padding-top:8px;margin-top:2px">
         <div class="forn-field-label">Atividade principal (CNAE${r.cnaeCodigo?' '+esc(r.cnaeCodigo):''})</div>
         <div class="forn-field-value">${esc(r.atividade)}</div>
       </div>
@@ -2098,12 +2103,7 @@ function limparTudo(){
   if(CONSULTANDO)return;
   RESULTS=[];
   document.getElementById('resultados').innerHTML='';
-  // KPIs voltam ao estado vazio
-  const kpiRow=document.getElementById('kpiRow');
-  kpiRow.classList.add('empty');
-  ['kpiTotal','kpiAtivos','kpiInativos','kpiRecentes','kpiErros'].forEach(id=>{
-    document.getElementById(id).textContent='—';
-  });
+  // KPIs são recriados dinamicamente junto com o card de resultados — não precisa resetar aqui
   document.getElementById('cnpjInput').value='';
   document.getElementById('cnpjCount').textContent='0';
   document.getElementById('fileInput').value='';
