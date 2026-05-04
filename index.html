@@ -1096,15 +1096,19 @@ body::before{
 <script>
 // ═════════════════ LOGIN ═════════════════
 const _u=[
-  {u:'wenfranca', p:'@#7263Wf'},
-  {u:'gisdias',   p:'@#1234Gd'}
+  {u:'wenfranca', h:'d4ce298d258f88a9b709d8dbd54244a118ae4b16442df73369dd15b75185d287'},
+  {u:'gisdias',   h:'d0b62e333deee6fba2d9d93d45616b56cb91ac5634b53c68f3873532af2e7af9'},
+  {u:'matlima',   h:'e2aecee42e48799a37aef75eb39d1349f75d013acbdbd179602e008657b07991'}
 ];
 let usuarioLogado='';
 
-function doLogin(){
+async function doLogin(){
   const u=document.getElementById('login-user').value.trim();
   const p=document.getElementById('login-pass').value;
-  const ok=_u.find(x=>x.u===u&&x.p===p);
+  const enc=new TextEncoder().encode(p);
+  const buf=await crypto.subtle.digest('SHA-256',enc);
+  const h=Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  const ok=_u.find(x=>x.u===u&&x.h===h);
   if(ok){
     usuarioLogado=u;
     document.getElementById('login-overlay').classList.add('hidden');
@@ -2014,6 +2018,10 @@ function cardHTML(r){
       <div class="forn-field">
         <div class="forn-field-label">E-mail</div>
         <div class="forn-field-value">${emailVal}</div>
+      </div>
+      <div class="forn-field">
+        <div class="forn-field-label">Capital social</div>
+        <div class="forn-field-value mono">${r.capital!==''&&r.capital!=null?Number(r.capital).toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2}):'—'}</div>
       </div>
       <div class="forn-field" style="grid-column:1/-1">
         <div class="forn-field-label">Atividade principal (CNAE${r.cnaeCodigo?' '+esc(r.cnaeCodigo):''})</div>
