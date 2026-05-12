@@ -422,8 +422,9 @@ body::before{
 }
 .kpi:nth-child(2)::after{background:radial-gradient(circle, rgba(0,229,155,.18), transparent 70%)}
 .kpi:nth-child(3)::after{background:radial-gradient(circle, rgba(255,179,71,.18), transparent 70%)}
-.kpi:nth-child(4)::after{background:radial-gradient(circle, rgba(251,146,60,.22), transparent 70%)}
-.kpi:nth-child(5)::after{background:radial-gradient(circle, rgba(255,75,110,.18), transparent 70%)}
+.kpi:nth-child(4)::after{background:radial-gradient(circle, rgba(0,229,155,.18), transparent 70%)}
+.kpi:nth-child(5)::after{background:radial-gradient(circle, rgba(251,146,60,.22), transparent 70%)}
+.kpi:nth-child(6)::after{background:radial-gradient(circle, rgba(255,75,110,.18), transparent 70%)}
 
 .kpi-label{
   font-size:10px; color:var(--fog);
@@ -441,8 +442,12 @@ body::before{
 .kpi:nth-child(1) .kpi-value{background:linear-gradient(135deg, var(--neon), var(--neon2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent}
 .kpi:nth-child(2) .kpi-value{background:linear-gradient(135deg, var(--mint), #00b8a9); -webkit-background-clip:text; -webkit-text-fill-color:transparent}
 .kpi:nth-child(3) .kpi-value{background:linear-gradient(135deg, var(--warm), #ffe066); -webkit-background-clip:text; -webkit-text-fill-color:transparent}
-.kpi:nth-child(4) .kpi-value{background:linear-gradient(135deg, #fb923c, var(--warm)); -webkit-background-clip:text; -webkit-text-fill-color:transparent}
-.kpi:nth-child(5) .kpi-value{background:linear-gradient(135deg, var(--hot), #ff8090); -webkit-background-clip:text; -webkit-text-fill-color:transparent}
+.kpi:nth-child(4) .kpi-value{background:linear-gradient(135deg, var(--mint), var(--neon2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent}
+.kpi:nth-child(5) .kpi-value{background:linear-gradient(135deg, #fb923c, var(--warm)); -webkit-background-clip:text; -webkit-text-fill-color:transparent}
+.kpi:nth-child(6) .kpi-value{background:linear-gradient(135deg, var(--hot), #ff8090); -webkit-background-clip:text; -webkit-text-fill-color:transparent}
+
+/* KPI "Simples / MEI" tem dois números separados por "/" — reduz um pouco o tamanho pra caber bem */
+.kpi #kpiSimples{font-size:26px; letter-spacing:.5px}
 
 /* Quando os KPIs estão "zerados" (mostrando traço), usa cor neutra para não destacar */
 .kpis.empty .kpi-value{
@@ -953,6 +958,7 @@ body::before{
       <button class="upload-btn ghost" onclick="abrirColar()">📝 Colar CNPJs</button>
       <button class="upload-btn" onclick="document.getElementById('fileInput').click()">↑ Importar planilha</button>
       <button class="upload-btn" id="btnImprimir" onclick="imprimir()" style="display:none">🖨 Imprimir / PDF</button>
+      <button class="upload-btn ghost" id="btnExportar" onclick="exportarXLSX()" style="display:none">⬇ Exportar XLSX</button>
       <button class="upload-btn ghost danger" id="btnLimpar" onclick="limparTudo()" style="display:none">✕ Trocar</button>
     </div>
   </div>
@@ -1533,6 +1539,7 @@ async function consultarLista(cnpjs){
   CONSULTANDO=true;
   document.getElementById('btnConsultar').disabled=true;
   document.getElementById('btnImprimir').style.display='none';
+  document.getElementById('btnExportar').style.display='none';
   document.getElementById('btnLimpar').style.display='inline-flex';
   // Esconde o dropzone enquanto há consulta (é restaurado no limparTudo / Trocar)
   document.getElementById('dropzone').style.display='none';
@@ -1573,6 +1580,7 @@ async function consultarLista(cnpjs){
   setStatus(`${RESULTS.length} consulta(s) concluída(s)`,'on');
   document.getElementById('btnConsultar').disabled=false;
   document.getElementById('btnImprimir').style.display='inline-flex';
+  document.getElementById('btnExportar').style.display='inline-flex';
   CONSULTANDO=false;
   atualizaContadoresAlerta();
   atualizaBotaoRetry();
@@ -1649,7 +1657,25 @@ function normalizar(cnpj,d){
     email:d.email||'',
     telefone:fmtTel(d.ddd_telefone_1||''),
     telefone2:fmtTel(d.ddd_telefone_2||''),
-    capital:d.capital_social!=null?d.capital_social:''
+    capital:d.capital_social!=null?d.capital_social:'',
+    // Simples Nacional (BrasilAPI)
+    optanteSimples:d.opcao_pelo_simples===true,
+    optanteMei:d.opcao_pelo_mei===true,
+    dataOpcaoSimples:fmtData(d.data_opcao_pelo_simples),
+    dataExclusaoSimples:fmtData(d.data_exclusao_do_simples),
+    // Regime tributário — pega o registro mais recente do histórico anual.
+    // O campo regime_tributario vem como array: [{ano, forma_de_tributacao, ...}]
+    // Vazio ou ausente para muitos CNPJs (Receita não preenche pra todos).
+    ...(()=>{
+      const arr=Array.isArray(d.regime_tributario)?d.regime_tributario.filter(x=>x&&x.ano):[];
+      if(!arr.length)return {regimeTributario:'',regimeAno:''};
+      // Maior ano = mais recente
+      const recente=arr.reduce((a,b)=>Number(b.ano)>Number(a.ano)?b:a);
+      return {
+        regimeTributario:recente.forma_de_tributacao||'',
+        regimeAno:recente.ano?String(recente.ano):''
+      };
+    })()
   };
 }
 
@@ -1853,6 +1879,7 @@ function atualizaKPIsFiltrado(){
     document.getElementById('kpiTotal').textContent='—';
     document.getElementById('kpiAtivos').textContent='—';
     document.getElementById('kpiInativos').textContent='—';
+    document.getElementById('kpiSimples').textContent='—';
     document.getElementById('kpiRecentes').textContent='—';
     document.getElementById('kpiErros').textContent='—';
     return;
@@ -1870,6 +1897,8 @@ function atualizaKPIsFiltrado(){
   const ativos=base.filter(r=>r.status==='ok').length;
   const inativos=base.filter(r=>r.status==='inativo').length;
   const erros=base.filter(r=>r.status==='erro').length;
+  const optSimples=base.filter(r=>r.status!=='erro'&&r.optanteSimples&&!r.optanteMei).length;
+  const optMei=base.filter(r=>r.status!=='erro'&&r.optanteMei).length;
   const recentes=base.filter(r=>{
     if(r.status==='erro')return false;
     const ab=avaliaAbertura(r.abertura);
@@ -1878,6 +1907,8 @@ function atualizaKPIsFiltrado(){
   document.getElementById('kpiTotal').textContent=total;
   document.getElementById('kpiAtivos').textContent=ativos;
   document.getElementById('kpiInativos').textContent=inativos;
+  // Simples / MEI: mostra "X / Y" sendo X=Simples puro e Y=MEI
+  document.getElementById('kpiSimples').textContent=`${optSimples} / ${optMei}`;
   document.getElementById('kpiRecentes').textContent=recentes;
   document.getElementById('kpiErros').textContent=erros;
 }
@@ -1902,6 +1933,7 @@ function renderResultado(r){
       <div class="kpi"><div class="kpi-label">Consultados</div><div class="kpi-value" id="kpiTotal">—</div></div>
       <div class="kpi"><div class="kpi-label">Ativos</div><div class="kpi-value" id="kpiAtivos">—</div></div>
       <div class="kpi"><div class="kpi-label">Não ativos</div><div class="kpi-value" id="kpiInativos">—</div></div>
+      <div class="kpi"><div class="kpi-label">Simples / MEI</div><div class="kpi-value" id="kpiSimples">—</div></div>
       <div class="kpi"><div class="kpi-label">Recém-abertos (&lt; 1 ano)</div><div class="kpi-value" id="kpiRecentes">—</div></div>
       <div class="kpi"><div class="kpi-label">Falhas / Não encontrados</div><div class="kpi-value" id="kpiErros">—</div></div>
     </div>
@@ -1945,6 +1977,7 @@ function cardHTML(r){
     r.atividade, r.cnaeCodigo,
     r.email, r.telefone, r.telefone2,
     r.situacao, r.porte,
+    r.optanteMei?'mei optante simples':(r.optanteSimples?'simples optante':'nao optante simples'),
     ...(r.qsa||[])
   ].filter(Boolean).join(' '));
 
@@ -1985,6 +2018,27 @@ function cardHTML(r){
   const fantasiaHTML=r.fantasia?`<div class="forn-fant">${esc(r.fantasia)}</div>`:'';
   const motivoHTML=r.motivo&&r.status!=='ok'?`<div class="forn-field-value" style="margin-top:4px;color:var(--warm)">Motivo: ${esc(r.motivo)}</div>`:'';
 
+  // Badge de regime tributário (Simples Nacional / MEI)
+  let simplesBadge='';
+  let simplesLinhas='';
+  if(r.optanteMei){
+    simplesBadge=`<span class="badge badge-purple" title="Microempreendedor Individual (regime simplificado dentro do Simples Nacional)">MEI</span>`;
+    simplesLinhas=`<div class="forn-field-value">Optante pelo MEI${r.dataOpcaoSimples?` desde ${esc(r.dataOpcaoSimples)}`:''}</div>`;
+  }else if(r.optanteSimples){
+    simplesBadge=`<span class="badge badge-green" title="Optante pelo Simples Nacional">Simples</span>`;
+    simplesLinhas=`<div class="forn-field-value">Optante pelo Simples Nacional${r.dataOpcaoSimples?` desde ${esc(r.dataOpcaoSimples)}`:''}</div>`;
+  }else{
+    simplesLinhas=`<div class="forn-field-value muted">Não optante pelo Simples Nacional</div>`;
+    if(r.dataExclusaoSimples){
+      simplesLinhas+=`<div class="forn-field-value" style="font-size:11px;color:var(--mist)">Excluído em ${esc(r.dataExclusaoSimples)}</div>`;
+    }
+  }
+  // Forma de tributação (Lucro Real / Lucro Presumido / Lucro Arbitrado / Simples)
+  // Vem do histórico anual — exibimos o ano mais recente disponível.
+  if(r.regimeTributario){
+    simplesLinhas+=`<div class="forn-field-value" style="font-size:12px;color:var(--mist);margin-top:2px" title="Forma de tributação declarada à Receita Federal (último ano disponível)">Tributação: ${esc(r.regimeTributario)}${r.regimeAno?` <span style="opacity:.7">(${esc(r.regimeAno)})</span>`:''}</div>`;
+  }
+
   const emailVal=r.email
     ? `<a href="mailto:${esc(r.email)}">${esc(r.email)}</a>`
     : `<span class="muted" title="A Receita Federal só publica o e-mail quando o contribuinte cadastra como público. Para muitos CNPJs este campo vem vazio na fonte oficial.">Não disponível na Receita</span>`;
@@ -2001,6 +2055,7 @@ function cardHTML(r){
       <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
         ${sitBadge}
         ${r.porte?`<span class="badge badge-blue">${esc(r.porte)}</span>`:''}
+        ${simplesBadge}
         ${aberturaBadge}
       </div>
     </div>
@@ -2028,6 +2083,10 @@ function cardHTML(r){
         <div class="forn-field-label">Capital social</div>
         <div class="forn-field-value mono">${r.capital!==''&&r.capital!=null?Number(r.capital).toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2}):'—'}</div>
       </div>
+      <div class="forn-field">
+        <div class="forn-field-label">Regime tributário</div>
+        ${simplesLinhas}
+      </div>
       <div class="forn-field" style="grid-column:1/-1;border-top:1px solid var(--rim);padding-top:8px;margin-top:2px">
         <div class="forn-field-label">Atividade principal (CNAE${r.cnaeCodigo?' '+esc(r.cnaeCodigo):''})</div>
         <div class="forn-field-value">${esc(r.atividade)}</div>
@@ -2042,6 +2101,225 @@ function cardHTML(r){
 }
 
 // ═════════════════ AÇÕES ═════════════════
+// ═════════════════ EXPORTAR XLSX ═════════════════
+function exportarXLSX(){
+  if(!RESULTS.length)return;
+
+  // Mesma lógica de "visíveis" usada nos KPIs e na impressão:
+  // respeita tanto a busca textual quanto os filtros de alerta.
+  const cardsVisiveis=[...document.querySelectorAll('#resList .forn-card')]
+    .filter(c=>!c.classList.contains('hidden-by-search'));
+  const cnpjsVisiveis=new Set(
+    cardsVisiveis.map(c=>{
+      const el=c.querySelector('.forn-cnpj');
+      return el?onlyDigits(el.textContent):'';
+    }).filter(Boolean)
+  );
+
+  // Preserva a ordem original em que os cards foram renderizados
+  const base=RESULTS.filter(r=>cnpjsVisiveis.has(r.cnpj));
+
+  if(!base.length){
+    setStatus('Nada visível para exportar','busy');
+    setTimeout(()=>setStatus(`${RESULTS.length} consulta(s) concluída(s)`,'on'),2200);
+    return;
+  }
+
+  // Helpers locais
+  const sim=v=>v?'Sim':'Não';
+  const regime=r=>{
+    if(r.status==='erro')return '—';
+    if(r.optanteMei)return 'MEI';
+    if(r.optanteSimples)return 'Simples Nacional';
+    return 'Não optante';
+  };
+  const alerta=r=>{
+    if(r.status==='erro')return 'Falha na consulta';
+    const ab=avaliaAbertura(r.abertura);
+    if(!ab||!ab.nivel)return 'Sem alerta';
+    const map={critico:'Crítico',alto:'Alto',medio:'Médio',baixo:'Baixo'};
+    return `${map[ab.nivel]||ab.nivel} · ${ab.texto}`;
+  };
+
+  // Linhas: uma por CNPJ (QSA achatado em string separada por " | ")
+  const linhas=base.map(r=>{
+    if(r.status==='erro'){
+      return {
+        'CNPJ':fmtCNPJ(r.cnpj),
+        'Situação':'FALHA',
+        'Razão social':'—',
+        'Nome fantasia':'',
+        'Data de abertura':'',
+        'Alerta de abertura':'Falha na consulta',
+        'Município':'',
+        'UF':'',
+        'Porte':'',
+        'Regime tributário':'—',
+        'Optante Simples':'',
+        'Optante MEI':'',
+        'Data opção Simples':'',
+        'Data exclusão Simples':'',
+        'Forma de tributação':'',
+        'Ano referência tributação':'',
+        'Capital social (R$)':'',
+        'CNAE':'',
+        'Atividade principal':'',
+        'E-mail':'',
+        'Telefone':'',
+        'Telefone 2':'',
+        'Sócios / Administradores':'',
+        'Motivo':r.erro||'Erro desconhecido'
+      };
+    }
+    return {
+      'CNPJ':fmtCNPJ(r.cnpj),
+      'Situação':r.situacao||'—',
+      'Razão social':r.nome||'',
+      'Nome fantasia':r.fantasia||'',
+      'Data de abertura':r.abertura||'',
+      'Alerta de abertura':alerta(r),
+      'Município':r.municipio||'',
+      'UF':r.uf||'',
+      'Porte':r.porte||'',
+      'Regime tributário':regime(r),
+      'Optante Simples':sim(r.optanteSimples),
+      'Optante MEI':sim(r.optanteMei),
+      'Data opção Simples':r.dataOpcaoSimples||'',
+      'Data exclusão Simples':r.dataExclusaoSimples||'',
+      'Forma de tributação':r.regimeTributario||'',
+      'Ano referência tributação':r.regimeAno||'',
+      // Número puro, formatação fica como número na planilha
+      'Capital social (R$)':(r.capital!==''&&r.capital!=null)?Number(r.capital):'',
+      'CNAE':r.cnaeCodigo||'',
+      'Atividade principal':r.atividade||'',
+      'E-mail':r.email||'',
+      'Telefone':r.telefone||'',
+      'Telefone 2':r.telefone2||'',
+      'Sócios / Administradores':(r.qsa||[]).join(' | '),
+      'Motivo':r.motivo||''
+    };
+  });
+
+  // Cria a planilha
+  const ws=XLSX.utils.json_to_sheet(linhas);
+
+  // Larguras de coluna pensadas pra leitura confortável (em "caracteres")
+  const larguras=[
+    {wch:20}, // CNPJ
+    {wch:14}, // Situação
+    {wch:42}, // Razão social
+    {wch:30}, // Nome fantasia
+    {wch:14}, // Data de abertura
+    {wch:26}, // Alerta de abertura
+    {wch:22}, // Município
+    {wch:5},  // UF
+    {wch:18}, // Porte
+    {wch:20}, // Regime tributário
+    {wch:10}, // Optante Simples
+    {wch:10}, // Optante MEI
+    {wch:14}, // Data opção Simples
+    {wch:16}, // Data exclusão Simples
+    {wch:22}, // Forma de tributação
+    {wch:12}, // Ano referência tributação
+    {wch:18}, // Capital social
+    {wch:10}, // CNAE
+    {wch:50}, // Atividade principal
+    {wch:30}, // E-mail
+    {wch:18}, // Telefone
+    {wch:18}, // Telefone 2
+    {wch:60}, // Sócios
+    {wch:40}  // Motivo
+  ];
+  ws['!cols']=larguras;
+
+  // Aplica formato BRL na coluna "Capital social" (coluna Q = índice 16)
+  const ref=XLSX.utils.decode_range(ws['!ref']);
+  for(let row=1;row<=ref.e.r;row++){
+    const cellRef=XLSX.utils.encode_cell({r:row,c:16}); // coluna 17
+    const cell=ws[cellRef];
+    if(cell&&typeof cell.v==='number'){
+      cell.t='n';
+      cell.z='"R$" #,##0.00';
+    }
+  }
+
+  // Congela a primeira linha (cabeçalho) e adiciona autofiltro
+  ws['!freeze']={xSplit:0,ySplit:1};
+  ws['!autofilter']={ref:ws['!ref']};
+
+  // ═══ Aba de resumo ═══
+  const total=base.length;
+  const ativos=base.filter(r=>r.status==='ok').length;
+  const inativos=base.filter(r=>r.status==='inativo').length;
+  const erros=base.filter(r=>r.status==='erro').length;
+  const optSimples=base.filter(r=>r.status!=='erro'&&r.optanteSimples&&!r.optanteMei).length;
+  const optMei=base.filter(r=>r.status!=='erro'&&r.optanteMei).length;
+  const naoOpt=base.filter(r=>r.status!=='erro'&&!r.optanteSimples&&!r.optanteMei).length;
+  const recentes=base.filter(r=>{
+    if(r.status==='erro')return false;
+    const ab=avaliaAbertura(r.abertura);
+    return ab&&ab.nivel;
+  }).length;
+
+  const hoje=new Date();
+  const dataExt=hoje.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const horaExt=hoje.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const termo=document.getElementById('searchInput')?.value?.trim()||'';
+  const filtrosAtivos=[...ALERT_FILTER].filter(f=>f!=='todos');
+  const labelsAlerta={critico:'Crítico',alto:'Alto',medio:'Médio',baixo:'Baixo',sem:'Sem alerta',erro:'Falhas'};
+  const filtrosTxt=filtrosAtivos.length?filtrosAtivos.map(f=>labelsAlerta[f]||f).join(', '):'(nenhum)';
+
+  const resumo=[
+    ['Hub Compliance — Auditoria de Fornecedores'],
+    [`Emitido em ${dataExt} às ${horaExt}`],
+    [],
+    ['Escopo da exportação'],
+    ['Total exportado',total],
+    ['Total consultado',RESULTS.length],
+    ['Busca aplicada',termo||'(nenhuma)'],
+    ['Filtros de alerta',filtrosTxt],
+    [],
+    ['Situação cadastral'],
+    ['Ativos',ativos],
+    ['Não ativos',inativos],
+    ['Falhas / Não encontrados',erros],
+    [],
+    ['Regime tributário'],
+    ['Optantes Simples Nacional',optSimples],
+    ['Optantes MEI',optMei],
+    ['Não optantes',naoOpt],
+    [],
+    ['Outros'],
+    ['Recém-abertos (< 1 ano)',recentes],
+    [],
+    ['Fonte: BrasilAPI (dados públicos da Receita Federal)']
+  ];
+  const wsResumo=XLSX.utils.aoa_to_sheet(resumo);
+  wsResumo['!cols']=[{wch:32},{wch:22}];
+
+  // Monta workbook (Resumo primeiro, depois Fornecedores)
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,wsResumo,'Resumo');
+  XLSX.utils.book_append_sheet(wb,ws,'Fornecedores');
+
+  // Nome do arquivo (mesmo padrão da impressão)
+  const dataArq=hoje.toISOString().slice(0,10);
+  const labelsArquivo={critico:'Critico',alto:'Alto',medio:'Medio',baixo:'Baixo',sem:'SemAlerta',erro:'Falhas'};
+  const partesNome=['Hub-Compliance'];
+  if(filtrosAtivos.length){
+    const nomesArq=filtrosAtivos.slice(0,3).map(f=>labelsArquivo[f]||f);
+    partesNome.push(nomesArq.join('-'));
+  }else{
+    partesNome.push('Auditoria');
+  }
+  partesNome.push(dataArq);
+  const nomeArquivo=partesNome.join('_')+'.xlsx';
+
+  XLSX.writeFile(wb,nomeArquivo);
+
+  setStatus(`Planilha exportada · ${total} registro(s)`,'on');
+}
+
 function imprimir(){
   if(!RESULTS.length)return;
 
@@ -2108,6 +2386,7 @@ function limparTudo(){
   document.getElementById('cnpjCount').textContent='0';
   document.getElementById('fileInput').value='';
   document.getElementById('btnImprimir').style.display='none';
+  document.getElementById('btnExportar').style.display='none';
   document.getElementById('btnLimpar').style.display='none';
   document.getElementById('progressWrap').classList.remove('active');
   // fecha modais
